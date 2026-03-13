@@ -106,6 +106,7 @@ export interface ComparisonRow {
   tipsportRawMarketName: string;
   absoluteDiff: number;
   percentDiff: number;
+  probabilityEdge: number;
   matchingConfidence: number;
   status: ComparisonStatus;
   notes: string;
