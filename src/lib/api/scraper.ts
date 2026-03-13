@@ -1,13 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export interface ScrapeResult<T = any> {
+export interface ScrapeResult {
   success: boolean;
   error?: string;
-  data?: T;
   geoBlocked?: boolean;
+  markdown?: string;
+  html?: string;
+  data?: { markdown?: string; html?: string };
 }
 
-export async function scrapeNikeSuperkurzy(): Promise<ScrapeResult<{ markdown: string; html: string }>> {
+export async function scrapeNikeSuperkurzy(): Promise<ScrapeResult> {
   const { data, error } = await supabase.functions.invoke('scrape-nike', {
     body: {},
   });
@@ -15,10 +17,10 @@ export async function scrapeNikeSuperkurzy(): Promise<ScrapeResult<{ markdown: s
   if (error) {
     return { success: false, error: error.message };
   }
-  return data;
+  return data as ScrapeResult;
 }
 
-export async function scrapeFlashscoreOdds(matchUrl: string): Promise<ScrapeResult<{ markdown: string; html: string }>> {
+export async function scrapeFlashscoreOdds(matchUrl: string): Promise<ScrapeResult> {
   const { data, error } = await supabase.functions.invoke('scrape-flashscore', {
     body: { matchUrl },
   });
@@ -26,5 +28,5 @@ export async function scrapeFlashscoreOdds(matchUrl: string): Promise<ScrapeResu
   if (error) {
     return { success: false, error: error.message };
   }
-  return data;
+  return data as ScrapeResult;
 }

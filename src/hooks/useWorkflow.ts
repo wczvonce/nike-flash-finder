@@ -18,6 +18,7 @@ export interface WorkflowData {
   summary: SummaryStats | null;
   stage: WorkflowStage;
   stageProgress: Record<WorkflowStage, StageStatus>;
+  errors: string[];
   runAll: () => Promise<void>;
   runStage: (stage: WorkflowStage) => Promise<void>;
   reset: () => void;
@@ -44,6 +45,7 @@ export function useWorkflow(): WorkflowData {
   const [summary, setSummary] = useState<SummaryStats | null>(null);
   const [stage, setStage] = useState<WorkflowStage>('idle');
   const [stageProgress, setStageProgress] = useState(initialProgress);
+  const [errors, setErrors] = useState<string[]>([]);
 
   const updateProgress = (s: WorkflowStage, status: StageStatus) => {
     setStageProgress(prev => ({ ...prev, [s]: status }));
@@ -59,15 +61,28 @@ export function useWorkflow(): WorkflowData {
     setSummary(null);
     setStage('idle');
     setStageProgress(initialProgress);
+    setErrors([]);
   }, []);
 
   const runAll = useCallback(async () => {
+    const allErrors: string[] = [];
+    setErrors([]);
+
     // Step 1: Load Nike
     setStage('loading_nike');
     updateProgress('loading_nike', 'running');
-    const matches = await loadNikeSuperkurzy();
+    const nikeResult = await loadNikeSuperkurzy();
+    const matches = nikeResult.matches;
+    if (nikeResult.error) allErrors.push(nikeResult.error);
     setNikeMatches(matches);
-    updateProgress('loading_nike', 'complete');
+    updateProgress('loading_nike', matches.length > 0 ? 'complete' : 'error');
+
+    if (matches.length === 0) {
+      setErrors(allErrors);
+      setStage('complete');
+      updateProgress('complete', 'error');
+      return;
+    }
 
     // Step 2: Extract markets
     setStage('extracting_markets');
@@ -81,36 +96,38 @@ export function useWorkflow(): WorkflowData {
     // Step 3: Match Flashscore
     setStage('matching_flashscore');
     updateProgress('matching_flashscore', 'running');
-    const fsMatches = await findFlashscoreMatches(matches);
-    setFlashscoreMatches(fsMatches);
-    updateProgress('matching_flashscore', 'complete');
+    const fsResult = await findFlashscoreMatches(matches);
+    const fsMatchList = fsResult.matches;
+    if (fsResult.error) allErrors.push(fsResult.error);
+    setFlashscoreMatches(fsMatchList);
+    updateProgress('matching_flashscore', fsMatchList.length > 0 ? 'complete' : 'error');
 
     // Step 4: Parse odds
     setStage('parsing_odds');
     updateProgress('parsing_odds', 'running');
-    const fsMkts = await parseFlashscoreOdds(fsMatches);
+    const fsMkts = await parseFlashscoreOdds(fsMatchList);
     setFlashscoreMarkets(fsMkts);
     updateProgress('parsing_odds', 'complete');
 
     // Step 5: Compare
     setStage('comparing');
     updateProgress('comparing', 'running');
-    const rows = runComparison(matches, twoWay, fsMatches, fsMkts);
+    const rows = runComparison(matches, twoWay, fsMatchList, fsMkts);
     setComparisonRows(rows);
     const stats = computeSummary(rows);
     stats.totalNikeMatches = matches.length;
     stats.totalNikeMarkets = allMarkets.length;
     stats.totalTwoWayMarkets = twoWay.length;
-    stats.totalFlashscoreMatched = fsMatches.length;
+    stats.totalFlashscoreMatched = fsMatchList.length;
     setSummary(stats);
     updateProgress('comparing', 'complete');
 
+    setErrors(allErrors);
     setStage('complete');
-    updateProgress('complete', 'complete');
+    updateProgress('complete', allErrors.length > 0 ? 'error' : 'complete');
   }, []);
 
   const runStage = useCallback(async (_stage: WorkflowStage) => {
-    // For simplicity, run all stages up to the requested one
     await runAll();
   }, [runAll]);
 
@@ -123,7 +140,7 @@ export function useWorkflow(): WorkflowData {
   return {
     nikeMatches, nikeMarkets, nikeTwoWayMarkets,
     flashscoreMatches, flashscoreMarkets, comparisonRows,
-    summary, stage, stageProgress,
+    summary, stage, stageProgress, errors,
     runAll, runStage, reset, exportCSV: doExportCSV,
   };
 }
