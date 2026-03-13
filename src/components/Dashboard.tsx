@@ -32,7 +32,6 @@ function StageIcon({ status }: { status: StageStatus }) {
 
 export default function Dashboard() {
   const wf = useWorkflow();
-  const [showOnlyHigher, setShowOnlyHigher] = useState(true);
   const isRunning = wf.stage !== 'idle' && wf.stage !== 'complete';
 
   return (
