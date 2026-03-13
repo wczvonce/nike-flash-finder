@@ -13,8 +13,9 @@ export type NormalizedMarketType =
   | 'points_total_over_under';
 
 export type Period = 'full_time' | '1st_half' | '2nd_half' | 'set1' | 'set2' | 'set3' | 'match' | 'unknown';
-export type TrendDirection = 'up' | 'down' | 'unchanged' | null;
+export type TrendDirection = 'up' | 'down' | 'unchanged' | 'unknown' | null;
 export type ComparisonStatus = 'matched' | 'unmatched_match' | 'unmatched_market' | 'incomplete_data';
+export type TrendAlignment = 'very favorable' | 'favorable' | 'neutral' | 'unfavorable';
 export type Sport = 'football' | 'hockey' | 'tennis' | 'basketball' | 'unknown';
 
 // ===== NIKE MODELS =====
@@ -100,6 +101,7 @@ export interface ComparisonRow {
   nikeMarketName: string;
   nikeSelectionName: string;
   nikeCurrentOdd: number;
+  nikeTrend: TrendDirection;
   tipsportCurrent: number;
   tipsportOpening: number | null;
   tipsportTrend: TrendDirection;
@@ -107,6 +109,7 @@ export interface ComparisonRow {
   absoluteDiff: number;
   percentDiff: number;
   probabilityEdge: number;
+  trendAlignment: TrendAlignment;
   matchingConfidence: number;
   status: ComparisonStatus;
   notes: string;
@@ -158,4 +161,9 @@ export interface SummaryStats {
   topMarketType: string;
   bySport: Record<string, number>;
   byMarketType: Record<string, number>;
+  nikeUpCount: number;
+  nikeDownCount: number;
+  tipsportUpCount: number;
+  tipsportDownCount: number;
+  favorableTrendCount: number;
 }

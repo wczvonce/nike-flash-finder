@@ -5,6 +5,7 @@ export function TrendIcon({ direction }: { direction: TrendDirection }) {
   if (direction === 'up') return <ArrowUp className="inline h-3 w-3 trend-up" />;
   if (direction === 'down') return <ArrowDown className="inline h-3 w-3 trend-down" />;
   if (direction === 'unchanged') return <Minus className="inline h-3 w-3 trend-unchanged" />;
+  if (direction === 'unknown') return <span className="inline text-xs text-muted-foreground/50">?</span>;
   return null;
 }
 

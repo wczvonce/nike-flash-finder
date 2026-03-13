@@ -4,12 +4,20 @@
  */
 import type {
   NikeMatch, NikeMarket, FlashscoreMatch, FlashscoreMarket,
-  ComparisonRow, BookmakerOdds
+  ComparisonRow, BookmakerOdds, TrendDirection, TrendAlignment
 } from '@/types/models';
 import { marketsAreEquivalent } from './marketNormalizer';
 
 function getTipsport(odds: BookmakerOdds[]): BookmakerOdds | undefined {
   return odds.find(o => o.bookmakerName === 'Tipsport');
+}
+
+function computeTrendAlignment(nikeTrend: TrendDirection, tipsportTrend: TrendDirection): TrendAlignment {
+  if (nikeTrend === 'up' && tipsportTrend === 'down') return 'very favorable';
+  if (nikeTrend === 'up' && tipsportTrend === 'unchanged') return 'favorable';
+  if (nikeTrend === 'unchanged' && tipsportTrend === 'down') return 'favorable';
+  if (nikeTrend === 'down' && tipsportTrend === 'up') return 'unfavorable';
+  return 'neutral';
 }
 
 export function runComparison(
@@ -50,6 +58,10 @@ export function runComparison(
     const percentDiff = Math.round(((nikeOdd - tipsportOdd) / tipsportOdd) * 10000) / 100;
     const probabilityEdge = Math.round(((1 / tipsportOdd) - (1 / nikeOdd)) * 10000) / 100;
 
+    // Nike trend: extracted from raw payload if available, otherwise 'unknown'
+    const nikeTrend: TrendDirection = (nikeMarket.rawPayload?.trendDirection as TrendDirection) ?? 'unknown';
+    const tipsportTrend = tipsport.trendDirection ?? 'unknown';
+
     rawRows.push({
       id: '',
       sport: nikeMatch.sport,
@@ -66,13 +78,15 @@ export function runComparison(
       nikeMarketName: nikeMarket.rawMarketName,
       nikeSelectionName: nikeMarket.rawSelectionName,
       nikeCurrentOdd: nikeOdd,
+      nikeTrend,
       tipsportCurrent: tipsportOdd,
       tipsportOpening: tipsport.openingOdd,
-      tipsportTrend: tipsport.trendDirection,
+      tipsportTrend,
       tipsportRawMarketName: matchedFsMarket.rawMarketName,
       absoluteDiff,
       percentDiff,
       probabilityEdge,
+      trendAlignment: computeTrendAlignment(nikeTrend, tipsportTrend),
       matchingConfidence: fsMatch.matchingConfidence,
       status: 'matched',
       notes: '',
