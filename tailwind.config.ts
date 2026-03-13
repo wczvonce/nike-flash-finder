@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -56,6 +60,15 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        nike: {
+          higher: "hsl(var(--nike-higher))",
+          best: "hsl(var(--nike-best))",
+        },
+        trend: {
+          up: "hsl(var(--trend-up))",
+          down: "hsl(var(--trend-down))",
+          unchanged: "hsl(var(--trend-unchanged))",
         },
       },
       borderRadius: {
