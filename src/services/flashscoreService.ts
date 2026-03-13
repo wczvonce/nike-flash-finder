@@ -1,146 +1,276 @@
 /**
  * Flashscore Match Finder & Odds Parser
- * Mock Flashscore data mirroring current Nike Superkurzy matches
+ * Live scraping from Flashscore via Firecrawl edge functions
  */
 import type { FlashscoreMatch, FlashscoreMarket, BookmakerOdds, NikeMatch, Sport, TrendDirection } from '@/types/models';
 import { computeMatchConfidence, MATCH_CONFIDENCE_THRESHOLD } from './teamNameNormalizer';
 import { normalizeMarket } from './marketNormalizer';
+import { scrapeFlashscoreOdds } from '@/lib/api/scraper';
 
-interface MockFSMatchData {
-  nikeMirrorId: string;
-  sport: Sport;
-  date: string;
-  time: string;
-  homeTeam: string;
-  awayTeam: string;
-  url: string;
-}
-
-const FS_MATCHES: MockFSMatchData[] = [
-  { nikeMirrorId: 'nike-1', sport: 'football', date: '2026-03-13', time: '20:30', homeTeam: 'Borussia Monchengladbach', awayTeam: 'FC St. Pauli', url: 'https://flashscore.com/match/mgladbach-stpauli' },
-  { nikeMirrorId: 'nike-2', sport: 'football', date: '2026-03-14', time: '18:30', homeTeam: 'Chelsea FC', awayTeam: 'Newcastle United', url: 'https://flashscore.com/match/chelsea-newcastle' },
-  { nikeMirrorId: 'nike-3', sport: 'hockey', date: '2026-03-13', time: '18:00', homeTeam: 'Rytiri Kladno', awayTeam: 'HC Sparta Praha', url: 'https://flashscore.com/match/kladno-sparta' },
-  { nikeMirrorId: 'nike-4', sport: 'hockey', date: '2026-03-14', time: '16:30', homeTeam: 'HK Dukla Michalovce', awayTeam: 'HK Spisska Nova Ves', url: 'https://flashscore.com/match/michalovce-spisska' },
-  { nikeMirrorId: 'nike-5', sport: 'tennis', date: '2026-03-14', time: '02:00', homeTeam: 'Rybakina E.', awayTeam: 'Svitolina E.', url: 'https://flashscore.com/match/rybakina-svitolina' },
-];
-
-function makeOdds(
-  fortuna: number | null, tipsport: number | null, doxxbet: number | null, tipos: number | null,
-  openings?: [number | null, number | null, number | null, number | null],
-  trends?: [TrendDirection, TrendDirection, TrendDirection, TrendDirection]
-): BookmakerOdds[] {
-  const names: Array<'Fortuna' | 'Tipsport' | 'DOXXbet' | 'Tipos'> = ['Fortuna', 'Tipsport', 'DOXXbet', 'Tipos'];
-  const odds = [fortuna, tipsport, doxxbet, tipos];
-  return names.map((name, i) => ({
-    bookmakerName: name,
-    currentOdd: odds[i],
-    openingOdd: openings?.[i] ?? null,
-    trendDirection: trends?.[i] ?? (odds[i] !== null ? 'unknown' as TrendDirection : null),
-    available: odds[i] !== null,
-  }));
-}
-
-interface MockFSMarketDef {
-  nikeMirrorId: string;
-  rawMarketName: string;
-  selection: string;
-  odds: [number | null, number | null, number | null, number | null]; // F, T, D, Ti
-}
-
-// Flashscore odds — must match real Flashscore Dvojita sanca / Zakladny cas values
-// Columns: 1X, 12, X2 — we only store 1X and X2 (2-way markets matched from Nike)
-const FS_MARKETS: MockFSMarketDef[] = [
-  // M gladbach vs St. Pauli — Dvojita sanca / Zakladny cas: 1X=1.24, 12=1.36, X2=1.93
-  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: '1X', odds: [1.22, 1.24, 1.23, 1.21] },
-  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.90, 1.93, 1.92, 1.89] },
-  // Chelsea vs Newcastle — Dvojita sanca / Zakladny cas
-  { nikeMirrorId: 'nike-2', rawMarketName: 'Double Chance', selection: '1X', odds: [1.25, 1.22, 1.26, 1.24] },
-  { nikeMirrorId: 'nike-2', rawMarketName: 'Double Chance', selection: 'X2', odds: [2.00, 1.95, 2.02, 1.98] },
-  // Kladno vs HC Sparta Praha — Dvojita sanca
-  { nikeMirrorId: 'nike-3', rawMarketName: 'Double Chance', selection: '1X', odds: [1.68, 1.65, 1.70, 1.67] },
-  { nikeMirrorId: 'nike-3', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.38, 1.40, 1.36, 1.39] },
-  // Michalovce vs Spišská N. Ves — Dvojita sanca
-  { nikeMirrorId: 'nike-4', rawMarketName: 'Double Chance', selection: '1X', odds: [1.40, 1.38, 1.42, 1.39] },
-  { nikeMirrorId: 'nike-4', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.55, 1.52, 1.57, 1.54] },
-  // Rybakina vs Svitolina — Winner
-  { nikeMirrorId: 'nike-5', rawMarketName: 'Winner', selection: 'Rybakina E.', odds: [1.40, 1.38, 1.41, 1.39] },
-  { nikeMirrorId: 'nike-5', rawMarketName: 'Winner', selection: 'Svitolina E.', odds: [2.90, 2.85, 2.92, 2.88] },
-];
-
-export async function findFlashscoreMatches(nikeMatches: NikeMatch[]): Promise<FlashscoreMatch[]> {
-  await new Promise(r => setTimeout(r, 400));
+/**
+ * Search Flashscore for matching events.
+ * Since we can't easily search Flashscore programmatically,
+ * we construct likely URLs from team names and try to scrape them.
+ */
+export async function findFlashscoreMatches(nikeMatches: NikeMatch[]): Promise<{ matches: FlashscoreMatch[]; error?: string }> {
+  console.log(`[FS] Finding Flashscore matches for ${nikeMatches.length} Nike matches...`);
   const results: FlashscoreMatch[] = [];
+  const errors: string[] = [];
 
   for (const nike of nikeMatches) {
-    for (const fs of FS_MATCHES) {
-      if (fs.nikeMirrorId !== nike.id) continue;
-      const confidence = computeMatchConfidence(
-        nike.homeTeam, nike.awayTeam, fs.homeTeam, fs.awayTeam,
-        nike.sport, fs.sport, nike.date, fs.date, nike.time, fs.time
-      );
-      if (confidence >= MATCH_CONFIDENCE_THRESHOLD) {
-        results.push({
-          id: `fs-${fs.nikeMirrorId}`,
-          sport: fs.sport,
-          date: fs.date,
-          time: fs.time,
-          homeTeam: fs.homeTeam,
-          awayTeam: fs.awayTeam,
-          rawTitle: `${fs.homeTeam} - ${fs.awayTeam}`,
-          flashscoreUrl: fs.url,
-          matchingConfidence: confidence,
-          matchedNikeMatchId: nike.id,
-          rawPayload: { source: 'flashscore_mock' },
-        });
+    // Construct a Flashscore search URL based on team names
+    const homeSlug = slugify(nike.homeTeam);
+    const awaySlug = slugify(nike.awayTeam);
+
+    // Flashscore URLs typically follow: /zapas/SLUG/oddsy
+    // We'll try common URL patterns
+    const possibleUrls = [
+      `https://www.flashscore.sk/zapas/${homeSlug}-${awaySlug}/`,
+      `https://www.flashscore.com/match/${homeSlug}-${awaySlug}/`,
+    ];
+
+    let matched = false;
+    for (const url of possibleUrls) {
+      try {
+        console.log(`[FS] Trying URL: ${url}`);
+        const result = await scrapeFlashscoreOdds(url);
+
+        if (result.success && result.markdown && result.markdown.length > 100) {
+          const confidence = 85; // URL-based match — high confidence if page loaded
+
+          results.push({
+            id: `fs-${nike.id}`,
+            sport: nike.sport,
+            date: nike.date,
+            time: nike.time,
+            homeTeam: nike.homeTeam,
+            awayTeam: nike.awayTeam,
+            rawTitle: `${nike.homeTeam} - ${nike.awayTeam}`,
+            flashscoreUrl: url,
+            matchingConfidence: confidence,
+            matchedNikeMatchId: nike.id,
+            rawPayload: {
+              source: 'flashscore_live',
+              markdown: result.markdown,
+              html: result.html || result.data?.html || '',
+            },
+          });
+          matched = true;
+          break;
+        } else {
+          console.log(`[FS] URL failed or empty:`, result.error);
+        }
+      } catch (err) {
+        console.error(`[FS] Error scraping ${url}:`, err);
       }
+    }
+
+    if (!matched) {
+      errors.push(`Could not find Flashscore match for: ${nike.homeTeam} - ${nike.awayTeam}`);
     }
   }
 
-  return results;
+  return {
+    matches: results,
+    error: errors.length > 0 ? errors.join('; ') : undefined,
+  };
 }
 
+/**
+ * Parse odds from scraped Flashscore markdown/HTML for each matched event
+ */
 export async function parseFlashscoreOdds(fsMatches: FlashscoreMatch[]): Promise<FlashscoreMarket[]> {
-  await new Promise(r => setTimeout(r, 400));
+  console.log(`[FS] Parsing odds for ${fsMatches.length} Flashscore matches...`);
   const markets: FlashscoreMarket[] = [];
   let counter = 0;
 
   for (const fsMatch of fsMatches) {
-    const mirrorId = fsMatch.matchedNikeMatchId;
-    const defs = FS_MARKETS.filter(d => d.nikeMirrorId === mirrorId);
+    const markdown = (fsMatch.rawPayload as any)?.markdown || '';
+    const html = (fsMatch.rawPayload as any)?.html || '';
 
-    for (const def of defs) {
+    if (!markdown && !html) {
+      console.log(`[FS] No content for ${fsMatch.rawTitle}, skipping odds parsing`);
+      continue;
+    }
+
+    // Parse odds from the markdown
+    const parsedMarkets = parseOddsFromContent(markdown, fsMatch);
+    for (const pm of parsedMarkets) {
       counter++;
-      const norm = normalizeMarket(def.rawMarketName, def.selection, fsMatch.sport);
-      const bookmakerOdds = makeOdds(...def.odds);
-
-      // Debug: log parsed bookmaker cell for each market row
-      const tipsport = bookmakerOdds.find(o => o.bookmakerName === 'Tipsport');
-      console.log(`[FS-PARSE] match=${fsMatch.rawTitle} | market=${def.rawMarketName} | selection=${def.selection} | period=${norm.period} | Tipsport=${tipsport?.currentOdd ?? 'N/A'}`);
-
-      // Validation: ensure Tipsport odd is from correct bookmaker row
-      if (tipsport && tipsport.currentOdd !== null && tipsport.currentOdd !== def.odds[1]) {
-        console.error(`[FS-PARSE-ERROR] Tipsport odd mismatch: expected=${def.odds[1]} got=${tipsport.currentOdd} for ${fsMatch.rawTitle} ${def.rawMarketName} ${def.selection}`);
-      }
-
-      markets.push({
-        id: `fs-mkt-${counter}`,
-        flashscoreMatchId: fsMatch.id,
-        marketType: norm.marketType,
-        rawMarketName: def.rawMarketName,
-        selection: norm.selection,
-        line: norm.line,
-        period: norm.period,
-        side: norm.side,
-        bookmakerOdds,
-        rawPayload: {
-          rawMarketName: def.rawMarketName,
-          rawSelection: def.selection,
-          parsedTipsportOdd: tipsport?.currentOdd ?? null,
-          sourceOddsArray: def.odds,
-        },
-      });
+      markets.push({ ...pm, id: `fs-mkt-${counter}` });
     }
   }
 
+  console.log(`[FS] Total parsed markets: ${markets.length}`);
   return markets;
+}
+
+/**
+ * Parse bookmaker odds from Flashscore page content.
+ * Flashscore odds pages show odds in tables with bookmaker rows.
+ * Market tabs: "Dvojita sanca", "Vitaz", etc.
+ * Period tabs: "Zakladny cas", "1. polcas", etc.
+ */
+function parseOddsFromContent(markdown: string, fsMatch: FlashscoreMatch): Omit<FlashscoreMarket, 'id'>[] {
+  const markets: Omit<FlashscoreMarket, 'id'>[] = [];
+  const lines = markdown.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  let currentMarketName = '';
+  let currentPeriod = 'full_time';
+  const bookmakerNames = ['Fortuna', 'Tipsport', 'DOXXbet', 'Tipos', 'Nike', 'Bet365'];
+
+  // Track which market/section we're in
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Detect market tab names
+    if (/dvojit[áa] [sš]anca|double chance/i.test(line)) {
+      currentMarketName = 'Double Chance';
+    } else if (/v[íi]ťaz|winner/i.test(line) && !/draw/i.test(line)) {
+      currentMarketName = 'Winner';
+    } else if (/draw no bet|rem[íi]za nie/i.test(line)) {
+      currentMarketName = 'Draw No Bet';
+    } else if (/over.?under|viac.?menej/i.test(line)) {
+      currentMarketName = 'Over/Under';
+    }
+
+    // Detect period
+    if (/z[áa]kladn[ýy] [čc]as|full.?time/i.test(line)) {
+      currentPeriod = 'full_time';
+    } else if (/1\.\s*pol[čc]as|1st.?half/i.test(line)) {
+      currentPeriod = '1st_half';
+    }
+
+    // Detect bookmaker odds rows
+    // Format typically: "BookmakerName | 1.24 | 1.36 | 1.93" or similar
+    for (const bkName of bookmakerNames) {
+      if (line.toLowerCase().includes(bkName.toLowerCase())) {
+        const oddsInLine = line.match(/(\d+\.\d{2})/g);
+        if (oddsInLine && oddsInLine.length >= 2 && currentMarketName) {
+          const odds = oddsInLine.map(o => parseFloat(o));
+
+          // Map columns based on market type
+          if (currentMarketName === 'Double Chance' && odds.length >= 3) {
+            // Columns: 1X, 12, X2
+            addMarketOdd(markets, fsMatch, currentMarketName, '1x', bkName, odds[0], currentPeriod, line);
+            addMarketOdd(markets, fsMatch, currentMarketName, '12', bkName, odds[1], currentPeriod, line);
+            addMarketOdd(markets, fsMatch, currentMarketName, 'x2', bkName, odds[2], currentPeriod, line);
+          } else if (currentMarketName === 'Winner' && odds.length >= 2) {
+            // Columns: Home, Away (for 2-way)
+            addMarketOdd(markets, fsMatch, currentMarketName, fsMatch.homeTeam.toLowerCase(), bkName, odds[0], currentPeriod, line);
+            addMarketOdd(markets, fsMatch, currentMarketName, fsMatch.awayTeam.toLowerCase(), bkName, odds[1], currentPeriod, line);
+          } else if (currentMarketName === 'Double Chance' && odds.length === 2) {
+            // Only 2 visible — likely 1X and X2
+            addMarketOdd(markets, fsMatch, currentMarketName, '1x', bkName, odds[0], currentPeriod, line);
+            addMarketOdd(markets, fsMatch, currentMarketName, 'x2', bkName, odds[1], currentPeriod, line);
+          }
+        }
+      }
+    }
+  }
+
+  // Consolidate: group by market+selection, collect all bookmaker odds into one FlashscoreMarket
+  return consolidateMarkets(markets, fsMatch);
+}
+
+interface TempOdd {
+  flashscoreMatchId: string;
+  marketName: string;
+  selection: string;
+  bookmaker: string;
+  odd: number;
+  period: string;
+  rawLine: string;
+}
+
+const tempOdds: TempOdd[] = [];
+
+function addMarketOdd(
+  _markets: Omit<FlashscoreMarket, 'id'>[],
+  fsMatch: FlashscoreMatch,
+  marketName: string,
+  selection: string,
+  bookmaker: string,
+  odd: number,
+  period: string,
+  rawLine: string
+) {
+  tempOdds.push({
+    flashscoreMatchId: fsMatch.id,
+    marketName,
+    selection,
+    bookmaker,
+    odd,
+    period,
+    rawLine,
+  });
+
+  console.log(`[FS-PARSE] ${fsMatch.rawTitle} | ${marketName} | ${selection} | ${bookmaker} = ${odd} | period=${period}`);
+}
+
+function consolidateMarkets(
+  _placeholder: Omit<FlashscoreMarket, 'id'>[],
+  fsMatch: FlashscoreMatch
+): Omit<FlashscoreMarket, 'id'>[] {
+  const matchOdds = tempOdds.filter(o => o.flashscoreMatchId === fsMatch.id);
+  const grouped: Record<string, TempOdd[]> = {};
+
+  for (const o of matchOdds) {
+    const key = `${o.marketName}|${o.selection}|${o.period}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(o);
+  }
+
+  const results: Omit<FlashscoreMarket, 'id'>[] = [];
+
+  for (const [key, odds] of Object.entries(grouped)) {
+    const [marketName, selection, period] = key.split('|');
+    const norm = normalizeMarket(marketName, selection, fsMatch.sport);
+
+    const bookmakerOdds: BookmakerOdds[] = (['Fortuna', 'Tipsport', 'DOXXbet', 'Tipos'] as const).map(name => {
+      const found = odds.find(o => o.bookmaker === name);
+      return {
+        bookmakerName: name,
+        currentOdd: found?.odd ?? null,
+        openingOdd: null,
+        trendDirection: null as TrendDirection,
+        available: !!found,
+      };
+    });
+
+    const tipsport = bookmakerOdds.find(o => o.bookmakerName === 'Tipsport');
+    console.log(`[FS-CONSOLIDATED] ${fsMatch.rawTitle} | ${marketName} | ${selection} | Tipsport=${tipsport?.currentOdd ?? 'N/A'}`);
+
+    results.push({
+      flashscoreMatchId: fsMatch.id,
+      marketType: norm.marketType,
+      rawMarketName: marketName,
+      selection: norm.selection,
+      line: norm.line,
+      period: norm.period as any,
+      side: norm.side,
+      bookmakerOdds,
+      rawPayload: {
+        rawMarketName: marketName,
+        rawSelection: selection,
+        parsedOdds: odds.map(o => ({ bookmaker: o.bookmaker, odd: o.odd, rawLine: o.rawLine })),
+      },
+    });
+  }
+
+  // Clear processed odds
+  const remaining = tempOdds.filter(o => o.flashscoreMatchId !== fsMatch.id);
+  tempOdds.length = 0;
+  tempOdds.push(...remaining);
+
+  return results;
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
