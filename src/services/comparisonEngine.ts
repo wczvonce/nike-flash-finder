@@ -48,6 +48,7 @@ export function runComparison(
 
     const absoluteDiff = Math.round((nikeOdd - tipsportOdd) * 100) / 100;
     const percentDiff = Math.round(((nikeOdd - tipsportOdd) / tipsportOdd) * 10000) / 100;
+    const probabilityEdge = Math.round(((1 / tipsportOdd) - (1 / nikeOdd)) * 10000) / 100;
 
     rawRows.push({
       id: '',
