@@ -42,6 +42,7 @@ export function DetailModal({ row, open, onClose }: {
               <p className="font-mono text-xs">Market: {row.nikeMarketName}</p>
               <p className="font-mono text-xs">Selection: {row.nikeSelectionName}</p>
               <p className="font-mono text-lg font-bold text-accent">{row.nikeCurrentOdd.toFixed(2)}</p>
+              <p className="text-xs flex items-center gap-1">Trend: <TrendBadge direction={row.nikeTrend} /></p>
             </div>
             <div className="rounded bg-secondary p-3">
               <h4 className="font-semibold text-foreground mb-1">Tipsport</h4>
@@ -51,6 +52,7 @@ export function DetailModal({ row, open, onClose }: {
                 Opening: {row.tipsportOpening?.toFixed(2) ?? 'N/A'}
                 <TrendIcon direction={row.tipsportTrend} />
               </p>
+              <p className="text-xs flex items-center gap-1">Trend: <TrendBadge direction={row.tipsportTrend} /></p>
             </div>
           </div>
 
