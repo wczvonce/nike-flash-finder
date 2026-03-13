@@ -81,9 +81,9 @@ export function runComparison(
     });
   }
 
-  // Sort: %diff desc, absDiff desc, date/time asc
+  // Sort: probabilityEdge desc, absDiff desc, date/time asc
   rawRows.sort((a, b) => {
-    if (b.percentDiff !== a.percentDiff) return b.percentDiff - a.percentDiff;
+    if (b.probabilityEdge !== a.probabilityEdge) return b.probabilityEdge - a.probabilityEdge;
     if (b.absoluteDiff !== a.absoluteDiff) return b.absoluteDiff - a.absoluteDiff;
     const dateA = `${a.date} ${a.time}`;
     const dateB = `${b.date} ${b.time}`;
