@@ -24,18 +24,20 @@ const FS_MATCHES: MockFSMatchData[] = [
   { nikeMirrorId: 'nike-5', sport: 'tennis', date: '2026-03-14', time: '02:00', homeTeam: 'Rybakina E.', awayTeam: 'Svitolina E.', url: 'https://flashscore.com/match/rybakina-svitolina' },
 ];
 
-function makeOdds(fortuna: number | null, tipsport: number | null, doxxbet: number | null, tipos: number | null): BookmakerOdds[] {
-  const make = (name: 'Fortuna' | 'Tipsport' | 'DOXXbet' | 'Tipos', cur: number | null): BookmakerOdds => {
-    const trends: TrendDirection[] = ['up', 'down', 'unchanged'];
-    return {
-      bookmakerName: name,
-      currentOdd: cur,
-      openingOdd: cur ? +(cur + (Math.random() * 0.3 - 0.15)).toFixed(2) : null,
-      trendDirection: cur ? trends[Math.floor(Math.random() * 3)] : null,
-      available: cur !== null,
-    };
-  };
-  return [make('Fortuna', fortuna), make('Tipsport', tipsport), make('DOXXbet', doxxbet), make('Tipos', tipos)];
+function makeOdds(
+  fortuna: number | null, tipsport: number | null, doxxbet: number | null, tipos: number | null,
+  openings?: [number | null, number | null, number | null, number | null],
+  trends?: [TrendDirection, TrendDirection, TrendDirection, TrendDirection]
+): BookmakerOdds[] {
+  const names: Array<'Fortuna' | 'Tipsport' | 'DOXXbet' | 'Tipos'> = ['Fortuna', 'Tipsport', 'DOXXbet', 'Tipos'];
+  const odds = [fortuna, tipsport, doxxbet, tipos];
+  return names.map((name, i) => ({
+    bookmakerName: name,
+    currentOdd: odds[i],
+    openingOdd: openings?.[i] ?? null,
+    trendDirection: trends?.[i] ?? (odds[i] !== null ? 'unknown' as TrendDirection : null),
+    available: odds[i] !== null,
+  }));
 }
 
 interface MockFSMarketDef {
