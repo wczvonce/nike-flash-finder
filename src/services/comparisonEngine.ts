@@ -72,6 +72,7 @@ export function runComparison(
       tipsportRawMarketName: matchedFsMarket.rawMarketName,
       absoluteDiff,
       percentDiff,
+      probabilityEdge,
       matchingConfidence: fsMatch.matchingConfidence,
       status: 'matched',
       notes: '',
