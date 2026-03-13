@@ -150,6 +150,10 @@ export interface SummaryStats {
   minAdvantagePercent: number;
   avgAbsoluteDiff: number;
   maxAbsoluteDiff: number;
+  avgProbabilityEdge: number;
+  medianProbabilityEdge: number;
+  maxProbabilityEdge: number;
+  minProbabilityEdge: number;
   topSport: string;
   topMarketType: string;
   bySport: Record<string, number>;
