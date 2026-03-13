@@ -86,12 +86,8 @@ export default function Dashboard() {
             <span className="text-muted-foreground">Matches: <span className="text-foreground">{wf.nikeMatches.length}</span></span>
             <span className="text-muted-foreground">2-Way: <span className="text-foreground">{wf.nikeTwoWayMarkets.length}</span></span>
             <span className="text-muted-foreground">FS: <span className="text-foreground">{wf.flashscoreMatches.length}</span></span>
-            <span className="text-muted-foreground">Rows: <span className="text-foreground">{wf.comparisonRows.length}</span></span>
-            <span className="text-primary font-semibold">
-              Higher: {wf.comparisonRows.filter(r => r.nikeHigherThan.length > 0).length}
-            </span>
             <span className="text-primary font-bold">
-              Best: {wf.comparisonRows.filter(r => r.nikeIsBestOverall).length}
+              Nike &gt; Tipsport: {wf.comparisonRows.length}
             </span>
           </div>
         </div>
