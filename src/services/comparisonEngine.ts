@@ -48,6 +48,7 @@ export function runComparison(
 
     const absoluteDiff = Math.round((nikeOdd - tipsportOdd) * 100) / 100;
     const percentDiff = Math.round(((nikeOdd - tipsportOdd) / tipsportOdd) * 10000) / 100;
+    const probabilityEdge = Math.round(((1 / tipsportOdd) - (1 / nikeOdd)) * 10000) / 100;
 
     rawRows.push({
       id: '',
@@ -71,6 +72,7 @@ export function runComparison(
       tipsportRawMarketName: matchedFsMarket.rawMarketName,
       absoluteDiff,
       percentDiff,
+      probabilityEdge,
       matchingConfidence: fsMatch.matchingConfidence,
       status: 'matched',
       notes: '',
@@ -79,9 +81,9 @@ export function runComparison(
     });
   }
 
-  // Sort: %diff desc, absDiff desc, date/time asc
+  // Sort: probabilityEdge desc, absDiff desc, date/time asc
   rawRows.sort((a, b) => {
-    if (b.percentDiff !== a.percentDiff) return b.percentDiff - a.percentDiff;
+    if (b.probabilityEdge !== a.probabilityEdge) return b.probabilityEdge - a.probabilityEdge;
     if (b.absoluteDiff !== a.absoluteDiff) return b.absoluteDiff - a.absoluteDiff;
     const dateA = `${a.date} ${a.time}`;
     const dateB = `${b.date} ${b.time}`;

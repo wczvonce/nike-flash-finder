@@ -106,6 +106,7 @@ export interface ComparisonRow {
   tipsportRawMarketName: string;
   absoluteDiff: number;
   percentDiff: number;
+  probabilityEdge: number;
   matchingConfidence: number;
   status: ComparisonStatus;
   notes: string;
@@ -149,6 +150,10 @@ export interface SummaryStats {
   minAdvantagePercent: number;
   avgAbsoluteDiff: number;
   maxAbsoluteDiff: number;
+  avgProbabilityEdge: number;
+  medianProbabilityEdge: number;
+  maxProbabilityEdge: number;
+  minProbabilityEdge: number;
   topSport: string;
   topMarketType: string;
   bySport: Record<string, number>;

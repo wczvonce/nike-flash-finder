@@ -1,22 +1,22 @@
 import { useState, useMemo } from 'react';
 import type { ComparisonRow } from '@/types/models';
 import { DetailModal } from './DetailModal';
-import { Badge } from '@/components/ui/badge';
 import { ArrowUpDown } from 'lucide-react';
 
-type SortKey = 'rank' | 'percentDiff' | 'absoluteDiff' | 'nikeCurrentOdd' | 'tipsportCurrent' | 'date' | 'sport' | 'marketType';
+type SortKey = 'rank' | 'probabilityEdge' | 'percentDiff' | 'absoluteDiff' | 'nikeCurrentOdd' | 'tipsportCurrent' | 'date' | 'sport' | 'marketType';
 type SortDir = 'asc' | 'desc';
 
-const PERCENT_PRESETS = [
+const PROB_EDGE_PRESETS = [
   { label: 'All', value: 0 },
-  { label: '≥ 2%', value: 2 },
-  { label: '≥ 5%', value: 5 },
-  { label: '≥ 10%', value: 10 },
+  { label: '≥ 0.50', value: 0.5 },
+  { label: '≥ 1.00', value: 1 },
+  { label: '≥ 2.00', value: 2 },
+  { label: '≥ 3.00', value: 3 },
 ];
 
-function getEdgeClass(pct: number): string {
-  if (pct >= 10) return 'edge-strong';
-  if (pct >= 5) return 'edge-solid';
+function getEdgeClass(pe: number): string {
+  if (pe >= 2) return 'edge-strong';
+  if (pe >= 1) return 'edge-solid';
   return 'edge-small';
 }
 
@@ -24,7 +24,7 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
   const [selectedRow, setSelectedRow] = useState<ComparisonRow | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [minPercent, setMinPercent] = useState(0);
+  const [minProbEdge, setMinProbEdge] = useState(0);
   const [sportFilter, setSportFilter] = useState('');
   const [marketFilter, setMarketFilter] = useState('');
 
@@ -32,11 +32,11 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
   const marketTypes = useMemo(() => [...new Set(rows.map(r => r.marketType).filter(Boolean))], [rows]);
 
   const filtered = useMemo(() => {
-    let result = rows.filter(r => r.percentDiff >= minPercent);
+    let result = rows.filter(r => r.probabilityEdge >= minProbEdge);
     if (sportFilter) result = result.filter(r => r.sport === sportFilter);
     if (marketFilter) result = result.filter(r => r.marketType === marketFilter);
     return result;
-  }, [rows, minPercent, sportFilter, marketFilter]);
+  }, [rows, minProbEdge, sportFilter, marketFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -44,6 +44,7 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
       let cmp = 0;
       switch (sortKey) {
         case 'rank': cmp = a.rank - b.rank; break;
+        case 'probabilityEdge': cmp = a.probabilityEdge - b.probabilityEdge; break;
         case 'percentDiff': cmp = a.percentDiff - b.percentDiff; break;
         case 'absoluteDiff': cmp = a.absoluteDiff - b.absoluteDiff; break;
         case 'nikeCurrentOdd': cmp = a.nikeCurrentOdd - b.nikeCurrentOdd; break;
@@ -82,7 +83,7 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
       {top10.length > 0 && (
         <div className="mb-6">
           <h3 className="text-sm font-bold text-primary mb-2 tracking-wide uppercase">
-            Top 10 Nike Advantages vs Tipsport
+            Top 10 Nike Advantages vs Tipsport (by Probability Edge)
           </h3>
           <div className="overflow-x-auto rounded border border-primary/30">
             <table className="w-full text-sm">
@@ -95,13 +96,14 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
                   <th className="px-2 py-2 text-right">Tipsport</th>
                   <th className="px-2 py-2 text-right">Diff</th>
                   <th className="px-2 py-2 text-right">%</th>
+                  <th className="px-2 py-2 text-right" title="Probability Edge in percentage points">Prob Edge</th>
                 </tr>
               </thead>
               <tbody>
                 {top10.map(row => (
                   <tr
                     key={row.id}
-                    className={`border-b border-border cursor-pointer hover:bg-secondary/50 transition-colors ${getEdgeClass(row.percentDiff)}`}
+                    className={`border-b border-border cursor-pointer hover:bg-secondary/50 transition-colors ${getEdgeClass(row.probabilityEdge)}`}
                     onClick={() => setSelectedRow(row)}
                   >
                     <td className="px-2 py-1.5 font-mono text-xs text-muted-foreground">{row.rank}</td>
@@ -110,7 +112,8 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
                     <td className="px-2 py-1.5 text-right font-mono font-bold text-accent">{row.nikeCurrentOdd.toFixed(2)}</td>
                     <td className="px-2 py-1.5 text-right font-mono">{row.tipsportCurrent.toFixed(2)}</td>
                     <td className="px-2 py-1.5 text-right font-mono text-primary">+{row.absoluteDiff.toFixed(2)}</td>
-                    <td className="px-2 py-1.5 text-right font-mono font-bold text-primary">+{row.percentDiff.toFixed(2)}%</td>
+                    <td className="px-2 py-1.5 text-right font-mono">+{row.percentDiff.toFixed(2)}%</td>
+                    <td className="px-2 py-1.5 text-right font-mono font-bold text-primary">{row.probabilityEdge.toFixed(2)}pp</td>
                   </tr>
                 ))}
               </tbody>
@@ -122,13 +125,13 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
       {/* FILTERS */}
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Min %:</span>
-          {PERCENT_PRESETS.map(p => (
+          <span className="text-xs text-muted-foreground" title="Minimum Probability Edge (pp)">Min Prob Edge:</span>
+          {PROB_EDGE_PRESETS.map(p => (
             <button
               key={p.value}
-              onClick={() => setMinPercent(p.value)}
+              onClick={() => setMinProbEdge(p.value)}
               className={`px-2 py-0.5 text-xs rounded border transition-colors ${
-                minPercent === p.value
+                minProbEdge === p.value
                   ? 'border-primary bg-primary/20 text-primary'
                   : 'border-border text-muted-foreground hover:text-foreground'
               }`}
@@ -174,13 +177,14 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
               <SortHeader k="tipsportCurrent"><span className="text-right w-full">Tipsport</span></SortHeader>
               <SortHeader k="absoluteDiff"><span className="text-right w-full">Diff</span></SortHeader>
               <SortHeader k="percentDiff"><span className="text-right w-full">%</span></SortHeader>
+              <SortHeader k="probabilityEdge"><span className="text-right w-full" title="Probability Edge (pp)">Prob Edge</span></SortHeader>
             </tr>
           </thead>
           <tbody>
             {sorted.map(row => (
               <tr
                 key={row.id}
-                className={`border-b border-border cursor-pointer hover:bg-secondary/50 transition-colors ${getEdgeClass(row.percentDiff)}`}
+                className={`border-b border-border cursor-pointer hover:bg-secondary/50 transition-colors ${getEdgeClass(row.probabilityEdge)}`}
                 onClick={() => setSelectedRow(row)}
               >
                 <td className="px-2 py-1.5 font-mono text-xs text-muted-foreground">{row.rank}</td>
@@ -195,7 +199,8 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
                 <td className="px-2 py-1.5 text-right font-mono font-bold text-accent">{row.nikeCurrentOdd.toFixed(2)}</td>
                 <td className="px-2 py-1.5 text-right font-mono">{row.tipsportCurrent.toFixed(2)}</td>
                 <td className="px-2 py-1.5 text-right font-mono text-primary">+{row.absoluteDiff.toFixed(2)}</td>
-                <td className="px-2 py-1.5 text-right font-mono font-bold text-primary">+{row.percentDiff.toFixed(2)}%</td>
+                <td className="px-2 py-1.5 text-right font-mono">+{row.percentDiff.toFixed(2)}%</td>
+                <td className="px-2 py-1.5 text-right font-mono font-bold text-primary">{row.probabilityEdge.toFixed(2)}pp</td>
               </tr>
             ))}
           </tbody>

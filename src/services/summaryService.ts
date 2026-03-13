@@ -3,6 +3,7 @@ import type { ComparisonRow, SummaryStats } from '@/types/models';
 export function computeSummary(rows: ComparisonRow[]): SummaryStats {
   const pcts = rows.map(r => r.percentDiff);
   const absDiffs = rows.map(r => r.absoluteDiff);
+  const probEdges = rows.map(r => r.probabilityEdge);
 
   const bySport: Record<string, number> = {};
   const byMarketType: Record<string, number> = {};
@@ -15,12 +16,15 @@ export function computeSummary(rows: ComparisonRow[]): SummaryStats {
   const topSport = Object.entries(bySport).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
   const topMarketType = Object.entries(byMarketType).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
 
-  const sorted = [...pcts].sort((a, b) => a - b);
-  const median = sorted.length > 0
-    ? sorted.length % 2 === 0
+  const medianOf = (arr: number[]) => {
+    if (arr.length === 0) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    return sorted.length % 2 === 0
       ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
-      : sorted[Math.floor(sorted.length / 2)]
-    : 0;
+      : sorted[Math.floor(sorted.length / 2)];
+  };
+
+  const avg = (arr: number[]) => arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length * 100) / 100 : 0;
 
   return {
     totalNikeMatches: 0,
@@ -29,12 +33,16 @@ export function computeSummary(rows: ComparisonRow[]): SummaryStats {
     totalFlashscoreMatched: 0,
     totalValidCompared: rows.length,
     totalNikeBetter: rows.length,
-    avgAdvantagePercent: pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length * 100) / 100 : 0,
-    medianAdvantagePercent: Math.round(median * 100) / 100,
+    avgAdvantagePercent: avg(pcts),
+    medianAdvantagePercent: Math.round(medianOf(pcts) * 100) / 100,
     maxAdvantagePercent: pcts.length > 0 ? Math.max(...pcts) : 0,
     minAdvantagePercent: pcts.length > 0 ? Math.min(...pcts) : 0,
-    avgAbsoluteDiff: absDiffs.length > 0 ? Math.round(absDiffs.reduce((a, b) => a + b, 0) / absDiffs.length * 100) / 100 : 0,
+    avgAbsoluteDiff: avg(absDiffs),
     maxAbsoluteDiff: absDiffs.length > 0 ? Math.max(...absDiffs) : 0,
+    avgProbabilityEdge: avg(probEdges),
+    medianProbabilityEdge: Math.round(medianOf(probEdges) * 100) / 100,
+    maxProbabilityEdge: probEdges.length > 0 ? Math.max(...probEdges) : 0,
+    minProbabilityEdge: probEdges.length > 0 ? Math.min(...probEdges) : 0,
     topSport,
     topMarketType,
     bySport,
@@ -45,7 +53,7 @@ export function computeSummary(rows: ComparisonRow[]): SummaryStats {
 export function exportToCSV(rows: ComparisonRow[]): string {
   const headers = [
     'Rank', 'Sport', 'Date', 'Time', 'Match', 'Market', 'Line', 'Period', 'Selection',
-    'Nike Odd', 'Tipsport Odd', 'Abs Diff', '% Diff',
+    'Nike Odd', 'Tipsport Odd', 'Abs Diff', '% Diff', 'Probability Edge (pp)',
     'Nike Market Name', 'Tipsport Market Name', 'Confidence'
   ];
 
@@ -54,7 +62,7 @@ export function exportToCSV(rows: ComparisonRow[]): string {
   for (const r of rows) {
     csvRows.push([
       r.rank, r.sport, r.date, r.time, `"${r.matchTitle}"`, r.marketType ?? '', r.line ?? '', r.period, r.selection,
-      r.nikeCurrentOdd, r.tipsportCurrent, r.absoluteDiff, r.percentDiff,
+      r.nikeCurrentOdd, r.tipsportCurrent, r.absoluteDiff, r.percentDiff, r.probabilityEdge,
       `"${r.nikeMarketName}"`, `"${r.tipsportRawMarketName}"`, r.matchingConfidence
     ].join(','));
   }

@@ -14,12 +14,14 @@ export function SummaryPanel({ stats }: { stats: SummaryStats | null }) {
         <StatCard label="FS Matched" value={stats.totalFlashscoreMatched} />
         <StatCard label="Valid Compared" value={stats.totalValidCompared} />
         <StatCard label="Nike Better (rows)" value={stats.totalNikeBetter} highlight />
-        <StatCard label="Avg Advantage %" value={`${stats.avgAdvantagePercent}%`} highlight />
-        <StatCard label="Median Advantage %" value={`${stats.medianAdvantagePercent}%`} />
-        <StatCard label="Max Advantage %" value={`${stats.maxAdvantagePercent}%`} highlight />
-        <StatCard label="Min Advantage %" value={`${stats.minAdvantagePercent}%`} />
+        <StatCard label="Avg Prob Edge (pp)" value={`${stats.avgProbabilityEdge}pp`} highlight />
+        <StatCard label="Median Prob Edge (pp)" value={`${stats.medianProbabilityEdge}pp`} />
+        <StatCard label="Max Prob Edge (pp)" value={`${stats.maxProbabilityEdge}pp`} highlight />
+        <StatCard label="Min Prob Edge (pp)" value={`${stats.minProbabilityEdge}pp`} />
+        <StatCard label="Avg Advantage %" value={`${stats.avgAdvantagePercent}%`} />
+        <StatCard label="Max Advantage %" value={`${stats.maxAdvantagePercent}%`} />
         <StatCard label="Avg Abs Diff" value={stats.avgAbsoluteDiff.toFixed(2)} />
-        <StatCard label="Max Abs Diff" value={stats.maxAbsoluteDiff.toFixed(2)} highlight />
+        <StatCard label="Max Abs Diff" value={stats.maxAbsoluteDiff.toFixed(2)} />
         <StatCard label="Top Sport" value={stats.topSport} />
         <StatCard label="Top Market Type" value={stats.topMarketType} />
       </div>
