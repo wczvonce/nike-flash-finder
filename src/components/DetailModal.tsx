@@ -61,6 +61,8 @@ export function DetailModal({ row, open, onClose }: {
             <div className="grid grid-cols-2 gap-4 font-mono">
               <p>Absolute: <span className="text-primary font-bold">+{row.absoluteDiff.toFixed(2)}</span></p>
               <p>Percentage: <span className="text-primary font-bold">+{row.percentDiff.toFixed(2)}%</span></p>
+              <p>Prob Edge: <span className="text-primary font-bold">{row.probabilityEdge.toFixed(2)}pp</span></p>
+              <p className="flex items-center gap-1">Trend: <TrendAlignmentBadge alignment={row.trendAlignment} /></p>
             </div>
           </div>
 
