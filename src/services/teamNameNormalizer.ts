@@ -4,10 +4,14 @@
  */
 
 const ALIASES: Record<string, string[]> = {
-  'borussia monchengladbach': ['m gladbach', 'gladbach', 'bmg', "b. m'gladbach"],
-  'newcastle united': ['newcastle utd', 'newcastle'],
+  'borussia monchengladbach': ['m gladbach', 'gladbach', 'bmg', "b. m'gladbach", 'bor monchengladbach'],
+  'st pauli': ['fc st pauli', 'st. pauli', 'fc st. pauli'],
+  'chelsea': ['chelsea fc'],
+  'newcastle united': ['newcastle utd', 'newcastle utd.', 'newcastle'],
   'sparta praha': ['hc sparta praha', 'ac sparta praha', 'sparta prague'],
-  'spisska nova ves': ['spisska n. ves', 'spisska n ves'],
+  'kladno': ['rytiri kladno', 'hc kladno'],
+  'michalovce': ['hk dukla michalovce', 'dukla michalovce', 'hk michalovce'],
+  'spisska nova ves': ['spisska n. ves', 'spisska n ves', 'hk spisska nova ves'],
   'manchester united': ['man utd', 'man united', 'manchester utd'],
   'manchester city': ['man city'],
   'atletico madrid': ['atl. madrid', 'atl madrid', 'atletico'],
@@ -17,7 +21,7 @@ const ALIASES: Record<string, string[]> = {
   'barcelona': ['fc barcelona', 'barca'],
   'slovan bratislava': ['sk slovan bratislava'],
   'zilina': ['msk zilina'],
-  'kosice': ['fc kosice'],
+  'kosice': ['fc kosice', 'hc kosice'],
   'banska bystrica': ['fk dukla banska bystrica', 'dukla b. bystrica'],
   'trencin': ['as trencin', 'fk as trencin'],
 };
