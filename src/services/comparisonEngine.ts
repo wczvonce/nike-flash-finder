@@ -1,6 +1,6 @@
 /**
- * Odds Comparison Engine
- * Matches Nike markets to Flashscore markets and computes comparison rows
+ * Nike vs Tipsport Comparison Engine
+ * Only outputs rows where Nike current odd > Tipsport current odd
  */
 import type {
   NikeMatch, NikeMarket, FlashscoreMatch, FlashscoreMarket,
@@ -8,8 +8,8 @@ import type {
 } from '@/types/models';
 import { marketsAreEquivalent } from './marketNormalizer';
 
-function getBookmaker(odds: BookmakerOdds[], name: string): BookmakerOdds | undefined {
-  return odds.find(o => o.bookmakerName === name);
+function getTipsport(odds: BookmakerOdds[]): BookmakerOdds | undefined {
+  return odds.find(o => o.bookmakerName === 'Tipsport');
 }
 
 export function runComparison(
@@ -18,21 +18,15 @@ export function runComparison(
   fsMatches: FlashscoreMatch[],
   fsMarkets: FlashscoreMarket[]
 ): ComparisonRow[] {
-  const rows: ComparisonRow[] = [];
-  let counter = 0;
+  const rawRows: Omit<ComparisonRow, 'rank'>[] = [];
 
   for (const nikeMarket of nikeTwoWayMarkets) {
     const nikeMatch = nikeMatches.find(m => m.id === nikeMarket.matchId);
     if (!nikeMatch) continue;
 
     const fsMatch = fsMatches.find(f => f.matchedNikeMatchId === nikeMatch.id);
-    if (!fsMatch) {
-      counter++;
-      rows.push(createUnmatchedRow(counter, nikeMatch, nikeMarket, 'unmatched_match'));
-      continue;
-    }
+    if (!fsMatch) continue;
 
-    // Find equivalent flashscore market
     const matchedFsMarket = fsMarkets.find(fm =>
       fm.flashscoreMatchId === fsMatch.id &&
       marketsAreEquivalent(
@@ -41,31 +35,22 @@ export function runComparison(
       )
     );
 
-    if (!matchedFsMarket) {
-      counter++;
-      rows.push(createUnmatchedRow(counter, nikeMatch, nikeMarket, 'unmatched_market'));
-      continue;
-    }
+    if (!matchedFsMarket) continue;
 
-    counter++;
-    const fortuna = getBookmaker(matchedFsMarket.bookmakerOdds, 'Fortuna');
-    const tipsport = getBookmaker(matchedFsMarket.bookmakerOdds, 'Tipsport');
-    const doxxbet = getBookmaker(matchedFsMarket.bookmakerOdds, 'DOXXbet');
-    const tipos = getBookmaker(matchedFsMarket.bookmakerOdds, 'Tipos');
+    const tipsport = getTipsport(matchedFsMarket.bookmakerOdds);
+    if (!tipsport?.currentOdd) continue;
 
     const nikeOdd = nikeMarket.nikeCurrentOdd;
-    const nikeHigherThan: string[] = [];
+    const tipsportOdd = tipsport.currentOdd;
 
-    if (fortuna?.currentOdd && nikeOdd > fortuna.currentOdd) nikeHigherThan.push('Fortuna');
-    if (tipsport?.currentOdd && nikeOdd > tipsport.currentOdd) nikeHigherThan.push('Tipsport');
-    if (doxxbet?.currentOdd && nikeOdd > doxxbet.currentOdd) nikeHigherThan.push('DOXXbet');
-    if (tipos?.currentOdd && nikeOdd > tipos.currentOdd) nikeHigherThan.push('Tipos');
+    // Only include if Nike is strictly higher
+    if (nikeOdd <= tipsportOdd) continue;
 
-    const availableOdds = [fortuna, tipsport, doxxbet, tipos].filter(b => b?.currentOdd != null);
-    const nikeIsBestOverall = availableOdds.length > 0 && availableOdds.every(b => nikeOdd > b!.currentOdd!);
+    const absoluteDiff = Math.round((nikeOdd - tipsportOdd) * 100) / 100;
+    const percentDiff = Math.round(((nikeOdd - tipsportOdd) / tipsportOdd) * 10000) / 100;
 
-    rows.push({
-      id: `cmp-${counter}`,
+    rawRows.push({
+      id: '',
       sport: nikeMatch.sport,
       date: nikeMatch.date,
       time: nikeMatch.time,
@@ -80,20 +65,12 @@ export function runComparison(
       nikeMarketName: nikeMarket.rawMarketName,
       nikeSelectionName: nikeMarket.rawSelectionName,
       nikeCurrentOdd: nikeOdd,
-      fortunaCurrent: fortuna?.currentOdd ?? null,
-      fortunaOpening: fortuna?.openingOdd ?? null,
-      fortunaTrend: fortuna?.trendDirection ?? null,
-      tipsportCurrent: tipsport?.currentOdd ?? null,
-      tipsportOpening: tipsport?.openingOdd ?? null,
-      tipsportTrend: tipsport?.trendDirection ?? null,
-      doxxbetCurrent: doxxbet?.currentOdd ?? null,
-      doxxbetOpening: doxxbet?.openingOdd ?? null,
-      doxxbetTrend: doxxbet?.trendDirection ?? null,
-      tiposCurrent: tipos?.currentOdd ?? null,
-      tiposOpening: tipos?.openingOdd ?? null,
-      tiposTrend: tipos?.trendDirection ?? null,
-      nikeHigherThan,
-      nikeIsBestOverall,
+      tipsportCurrent: tipsportOdd,
+      tipsportOpening: tipsport.openingOdd,
+      tipsportTrend: tipsport.trendDirection,
+      tipsportRawMarketName: matchedFsMarket.rawMarketName,
+      absoluteDiff,
+      percentDiff,
       matchingConfidence: fsMatch.matchingConfidence,
       status: 'matched',
       notes: '',
@@ -102,36 +79,18 @@ export function runComparison(
     });
   }
 
-  return rows;
-}
+  // Sort: %diff desc, absDiff desc, date/time asc
+  rawRows.sort((a, b) => {
+    if (b.percentDiff !== a.percentDiff) return b.percentDiff - a.percentDiff;
+    if (b.absoluteDiff !== a.absoluteDiff) return b.absoluteDiff - a.absoluteDiff;
+    const dateA = `${a.date} ${a.time}`;
+    const dateB = `${b.date} ${b.time}`;
+    return dateA.localeCompare(dateB);
+  });
 
-function createUnmatchedRow(counter: number, match: NikeMatch, market: NikeMarket, status: 'unmatched_match' | 'unmatched_market'): ComparisonRow {
-  return {
-    id: `cmp-${counter}`,
-    sport: match.sport,
-    date: match.date,
-    time: match.time,
-    matchTitle: `${match.homeTeam} - ${match.awayTeam}`,
-    homeTeam: match.homeTeam,
-    awayTeam: match.awayTeam,
-    marketType: market.marketType,
-    line: market.line,
-    period: market.period,
-    selection: market.selection,
-    side: market.side,
-    nikeMarketName: market.rawMarketName,
-    nikeSelectionName: market.rawSelectionName,
-    nikeCurrentOdd: market.nikeCurrentOdd,
-    fortunaCurrent: null, fortunaOpening: null, fortunaTrend: null,
-    tipsportCurrent: null, tipsportOpening: null, tipsportTrend: null,
-    doxxbetCurrent: null, doxxbetOpening: null, doxxbetTrend: null,
-    tiposCurrent: null, tiposOpening: null, tiposTrend: null,
-    nikeHigherThan: [],
-    nikeIsBestOverall: false,
-    matchingConfidence: 0,
-    status,
-    notes: status === 'unmatched_match' ? 'No Flashscore match found' : 'No equivalent Flashscore market found',
-    nikeRawPayload: market.rawPayload,
-    flashscoreRawPayload: {},
-  };
+  return rawRows.map((row, i) => ({
+    ...row,
+    id: `cmp-${i + 1}`,
+    rank: i + 1,
+  }));
 }

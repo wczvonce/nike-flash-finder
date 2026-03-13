@@ -1,57 +1,61 @@
 import type { ComparisonRow, SummaryStats } from '@/types/models';
 
 export function computeSummary(rows: ComparisonRow[]): SummaryStats {
-  const matched = rows.filter(r => r.status === 'matched');
-  const nikeHigher = matched.filter(r => r.nikeHigherThan.length > 0);
-  const nikeBest = matched.filter(r => r.nikeIsBestOverall);
+  const pcts = rows.map(r => r.percentDiff);
+  const absDiffs = rows.map(r => r.absoluteDiff);
 
   const bySport: Record<string, number> = {};
   const byMarketType: Record<string, number> = {};
-  const byBookmakerBeaten: Record<string, number> = {};
 
-  for (const r of nikeHigher) {
+  for (const r of rows) {
     bySport[r.sport] = (bySport[r.sport] || 0) + 1;
     if (r.marketType) byMarketType[r.marketType] = (byMarketType[r.marketType] || 0) + 1;
-    for (const b of r.nikeHigherThan) {
-      byBookmakerBeaten[b] = (byBookmakerBeaten[b] || 0) + 1;
-    }
   }
 
+  const topSport = Object.entries(bySport).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
+  const topMarketType = Object.entries(byMarketType).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
+
+  const sorted = [...pcts].sort((a, b) => a - b);
+  const median = sorted.length > 0
+    ? sorted.length % 2 === 0
+      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+      : sorted[Math.floor(sorted.length / 2)]
+    : 0;
+
   return {
-    totalNikeMatches: 0, // set externally
+    totalNikeMatches: 0,
     totalNikeMarkets: 0,
     totalTwoWayMarkets: 0,
     totalFlashscoreMatched: 0,
-    totalFlashscoreMarketsMatched: matched.length,
-    totalComparisonRows: rows.length,
-    totalNikeHigher: nikeHigher.length,
-    totalNikeBestOverall: nikeBest.length,
+    totalValidCompared: rows.length,
+    totalNikeBetter: rows.length,
+    avgAdvantagePercent: pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length * 100) / 100 : 0,
+    medianAdvantagePercent: Math.round(median * 100) / 100,
+    maxAdvantagePercent: pcts.length > 0 ? Math.max(...pcts) : 0,
+    minAdvantagePercent: pcts.length > 0 ? Math.min(...pcts) : 0,
+    avgAbsoluteDiff: absDiffs.length > 0 ? Math.round(absDiffs.reduce((a, b) => a + b, 0) / absDiffs.length * 100) / 100 : 0,
+    maxAbsoluteDiff: absDiffs.length > 0 ? Math.max(...absDiffs) : 0,
+    topSport,
+    topMarketType,
     bySport,
     byMarketType,
-    byBookmakerBeaten,
   };
 }
 
 export function exportToCSV(rows: ComparisonRow[]): string {
   const headers = [
-    'Sport', 'Date', 'Time', 'Match', 'Market', 'Line', 'Period', 'Selection',
-    'Nike', 'Fortuna Cur', 'Fortuna Open', 'Fortuna Trend',
-    'Tipsport Cur', 'Tipsport Open', 'Tipsport Trend',
-    'DOXXbet Cur', 'DOXXbet Open', 'DOXXbet Trend',
-    'Tipos Cur', 'Tipos Open', 'Tipos Trend',
-    'Nike Higher Than', 'Nike Best Overall', 'Status', 'Confidence', 'Notes'
+    'Rank', 'Sport', 'Date', 'Time', 'Match', 'Market', 'Line', 'Period', 'Selection',
+    'Nike Odd', 'Tipsport Odd', 'Abs Diff', '% Diff',
+    'Nike Market Name', 'Tipsport Market Name', 'Confidence'
   ];
 
   const csvRows = [headers.join(',')];
 
   for (const r of rows) {
     csvRows.push([
-      r.sport, r.date, r.time, `"${r.matchTitle}"`, r.marketType ?? '', r.line ?? '', r.period, r.selection,
-      r.nikeCurrentOdd, r.fortunaCurrent ?? '', r.fortunaOpening ?? '', r.fortunaTrend ?? '',
-      r.tipsportCurrent ?? '', r.tipsportOpening ?? '', r.tipsportTrend ?? '',
-      r.doxxbetCurrent ?? '', r.doxxbetOpening ?? '', r.doxxbetTrend ?? '',
-      r.tiposCurrent ?? '', r.tiposOpening ?? '', r.tiposTrend ?? '',
-      `"${r.nikeHigherThan.join(', ')}"`, r.nikeIsBestOverall, r.status, r.matchingConfidence, `"${r.notes}"`
+      r.rank, r.sport, r.date, r.time, `"${r.matchTitle}"`, r.marketType ?? '', r.line ?? '', r.period, r.selection,
+      r.nikeCurrentOdd, r.tipsportCurrent, r.absoluteDiff, r.percentDiff,
+      `"${r.nikeMarketName}"`, `"${r.tipsportRawMarketName}"`, r.matchingConfidence
     ].join(','));
   }
 
