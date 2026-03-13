@@ -101,6 +101,7 @@ export interface ComparisonRow {
   nikeMarketName: string;
   nikeSelectionName: string;
   nikeCurrentOdd: number;
+  nikeTrend: TrendDirection;
   tipsportCurrent: number;
   tipsportOpening: number | null;
   tipsportTrend: TrendDirection;
@@ -108,6 +109,7 @@ export interface ComparisonRow {
   absoluteDiff: number;
   percentDiff: number;
   probabilityEdge: number;
+  trendAlignment: TrendAlignment;
   matchingConfidence: number;
   status: ComparisonStatus;
   notes: string;
