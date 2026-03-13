@@ -122,18 +122,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="comparison">
-            <div className="mb-3 flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={showOnlyHigher}
-                  onChange={e => setShowOnlyHigher(e.target.checked)}
-                  className="rounded border-border"
-                />
-                Show only Nike-higher rows
-              </label>
-            </div>
-            <ComparisonTable rows={wf.comparisonRows} showOnlyNikeHigher={showOnlyHigher} />
+            <ComparisonTable rows={wf.comparisonRows} />
           </TabsContent>
 
           <TabsContent value="summary">
