@@ -161,4 +161,9 @@ export interface SummaryStats {
   topMarketType: string;
   bySport: Record<string, number>;
   byMarketType: Record<string, number>;
+  nikeUpCount: number;
+  nikeDownCount: number;
+  tipsportUpCount: number;
+  tipsportDownCount: number;
+  favorableTrendCount: number;
 }
