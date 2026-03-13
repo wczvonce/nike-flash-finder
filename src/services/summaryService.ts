@@ -53,7 +53,7 @@ export function computeSummary(rows: ComparisonRow[]): SummaryStats {
 export function exportToCSV(rows: ComparisonRow[]): string {
   const headers = [
     'Rank', 'Sport', 'Date', 'Time', 'Match', 'Market', 'Line', 'Period', 'Selection',
-    'Nike Odd', 'Tipsport Odd', 'Abs Diff', '% Diff',
+    'Nike Odd', 'Tipsport Odd', 'Abs Diff', '% Diff', 'Probability Edge (pp)',
     'Nike Market Name', 'Tipsport Market Name', 'Confidence'
   ];
 
@@ -62,7 +62,7 @@ export function exportToCSV(rows: ComparisonRow[]): string {
   for (const r of rows) {
     csvRows.push([
       r.rank, r.sport, r.date, r.time, `"${r.matchTitle}"`, r.marketType ?? '', r.line ?? '', r.period, r.selection,
-      r.nikeCurrentOdd, r.tipsportCurrent, r.absoluteDiff, r.percentDiff,
+      r.nikeCurrentOdd, r.tipsportCurrent, r.absoluteDiff, r.percentDiff, r.probabilityEdge,
       `"${r.nikeMarketName}"`, `"${r.tipsportRawMarketName}"`, r.matchingConfidence
     ].join(','));
   }
