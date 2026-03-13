@@ -47,18 +47,19 @@ interface MockFSMarketDef {
   odds: [number | null, number | null, number | null, number | null]; // F, T, D, Ti
 }
 
-// Tipsport odds set so Nike is sometimes higher for meaningful comparison
+// Flashscore odds — must match real Flashscore Dvojita sanca / Zakladny cas values
+// Columns: 1X, 12, X2 — we only store 1X and X2 (2-way markets matched from Nike)
 const FS_MARKETS: MockFSMarketDef[] = [
-  // M gladbach vs St. Pauli — Double Chance
-  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: '1X', odds: [1.22, 1.20, 1.23, 1.21] },
-  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.88, 1.85, 1.90, 1.87] },
-  // Chelsea vs Newcastle — Double Chance
+  // M gladbach vs St. Pauli — Dvojita sanca / Zakladny cas: 1X=1.24, 12=1.36, X2=1.93
+  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: '1X', odds: [1.22, 1.24, 1.23, 1.21] },
+  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.90, 1.93, 1.92, 1.89] },
+  // Chelsea vs Newcastle — Dvojita sanca / Zakladny cas
   { nikeMirrorId: 'nike-2', rawMarketName: 'Double Chance', selection: '1X', odds: [1.25, 1.22, 1.26, 1.24] },
   { nikeMirrorId: 'nike-2', rawMarketName: 'Double Chance', selection: 'X2', odds: [2.00, 1.95, 2.02, 1.98] },
-  // Kladno vs HC Sparta Praha — Double Chance
+  // Kladno vs HC Sparta Praha — Dvojita sanca
   { nikeMirrorId: 'nike-3', rawMarketName: 'Double Chance', selection: '1X', odds: [1.68, 1.65, 1.70, 1.67] },
   { nikeMirrorId: 'nike-3', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.38, 1.40, 1.36, 1.39] },
-  // Michalovce vs Spišská N. Ves — Double Chance
+  // Michalovce vs Spišská N. Ves — Dvojita sanca
   { nikeMirrorId: 'nike-4', rawMarketName: 'Double Chance', selection: '1X', odds: [1.40, 1.38, 1.42, 1.39] },
   { nikeMirrorId: 'nike-4', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.55, 1.52, 1.57, 1.54] },
   // Rybakina vs Svitolina — Winner
