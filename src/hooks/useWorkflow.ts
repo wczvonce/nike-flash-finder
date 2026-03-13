@@ -3,6 +3,7 @@ import type {
   NikeMatch, NikeMarket, FlashscoreMatch, FlashscoreMarket,
   ComparisonRow, WorkflowStage, StageStatus, SummaryStats
 } from '@/types/models';
+import type { NikeAttemptResult } from '@/lib/api/scraper';
 import { loadNikeSuperkurzy, extractNikeMarkets, filterTwoWayMarkets } from '@/services/nikeParser';
 import { findFlashscoreMatches, parseFlashscoreOdds } from '@/services/flashscoreService';
 import { runComparison } from '@/services/comparisonEngine';
@@ -19,10 +20,16 @@ export interface WorkflowData {
   stage: WorkflowStage;
   stageProgress: Record<WorkflowStage, StageStatus>;
   errors: string[];
+  nikeAttempts: NikeAttemptResult[];
+  nikeSourceMethod: string | null;
+  nikeFallbackReason: string | null;
+  needsScreenshotFallback: boolean;
   runAll: () => Promise<void>;
   runStage: (stage: WorkflowStage) => Promise<void>;
   reset: () => void;
   exportCSV: () => void;
+  injectScreenshotData: (matches: NikeMatch[], markets: NikeMarket[]) => void;
+  continueAfterNike: () => Promise<void>;
 }
 
 const initialProgress: Record<WorkflowStage, StageStatus> = {
@@ -47,6 +54,12 @@ export function useWorkflow(): WorkflowData {
   const [stageProgress, setStageProgress] = useState(initialProgress);
   const [errors, setErrors] = useState<string[]>([]);
 
+  // Nike source debug state
+  const [nikeAttempts, setNikeAttempts] = useState<NikeAttemptResult[]>([]);
+  const [nikeSourceMethod, setNikeSourceMethod] = useState<string | null>(null);
+  const [nikeFallbackReason, setNikeFallbackReason] = useState<string | null>(null);
+  const [needsScreenshotFallback, setNeedsScreenshotFallback] = useState(false);
+
   const updateProgress = (s: WorkflowStage, status: StageStatus) => {
     setStageProgress(prev => ({ ...prev, [s]: status }));
   };
@@ -62,37 +75,18 @@ export function useWorkflow(): WorkflowData {
     setStage('idle');
     setStageProgress(initialProgress);
     setErrors([]);
+    setNikeAttempts([]);
+    setNikeSourceMethod(null);
+    setNikeFallbackReason(null);
+    setNeedsScreenshotFallback(false);
   }, []);
 
-  const runAll = useCallback(async () => {
-    const allErrors: string[] = [];
-    setErrors([]);
-
-    // Step 1: Load Nike
-    setStage('loading_nike');
-    updateProgress('loading_nike', 'running');
-    const nikeResult = await loadNikeSuperkurzy();
-    const matches = nikeResult.matches;
-    if (nikeResult.error) allErrors.push(nikeResult.error);
-    setNikeMatches(matches);
-    updateProgress('loading_nike', matches.length > 0 ? 'complete' : 'error');
-
-    if (matches.length === 0) {
-      setErrors(allErrors);
-      setStage('complete');
-      updateProgress('complete', 'error');
-      return;
-    }
-
-    // Step 2: Extract markets
-    setStage('extracting_markets');
-    updateProgress('extracting_markets', 'running');
-    const allMarkets = extractNikeMarkets(matches);
-    setNikeMarkets(allMarkets);
-    const twoWay = filterTwoWayMarkets(allMarkets);
-    setNikeTwoWayMarkets(twoWay);
-    updateProgress('extracting_markets', 'complete');
-
+  const runFlashscoreAndCompare = useCallback(async (
+    matches: NikeMatch[],
+    allMarkets: NikeMarket[],
+    twoWay: NikeMarket[],
+    allErrors: string[]
+  ) => {
     // Step 3: Match Flashscore
     setStage('matching_flashscore');
     updateProgress('matching_flashscore', 'running');
@@ -127,6 +121,74 @@ export function useWorkflow(): WorkflowData {
     updateProgress('complete', allErrors.length > 0 ? 'error' : 'complete');
   }, []);
 
+  const runAll = useCallback(async () => {
+    const allErrors: string[] = [];
+    setErrors([]);
+    setNeedsScreenshotFallback(false);
+    setNikeAttempts([]);
+    setNikeSourceMethod(null);
+    setNikeFallbackReason(null);
+
+    // Step 1: Load Nike (multi-method)
+    setStage('loading_nike');
+    updateProgress('loading_nike', 'running');
+    const nikeResult = await loadNikeSuperkurzy();
+    const matches = nikeResult.matches;
+
+    // Store debug info from attempts
+    if (nikeResult.attempts) {
+      setNikeAttempts(nikeResult.attempts);
+    }
+    if (nikeResult.sourceMethod) {
+      setNikeSourceMethod(nikeResult.sourceMethod);
+    }
+
+    if (matches.length === 0) {
+      // All live methods failed — switch to screenshot fallback
+      const reason = nikeResult.error || 'All live Nike ingestion methods failed';
+      setNikeFallbackReason(reason);
+      setNeedsScreenshotFallback(true);
+      allErrors.push(reason + ' → Použi screenshot upload.');
+      setErrors(allErrors);
+      updateProgress('loading_nike', 'error');
+      return; // Wait for screenshot data
+    }
+
+    if (nikeResult.error) allErrors.push(nikeResult.error);
+    setNikeMatches(matches);
+    updateProgress('loading_nike', 'complete');
+
+    // Step 2: Extract markets
+    setStage('extracting_markets');
+    updateProgress('extracting_markets', 'running');
+    const allMarkets = extractNikeMarkets(matches);
+    setNikeMarkets(allMarkets);
+    const twoWay = filterTwoWayMarkets(allMarkets);
+    setNikeTwoWayMarkets(twoWay);
+    updateProgress('extracting_markets', 'complete');
+
+    await runFlashscoreAndCompare(matches, allMarkets, twoWay, allErrors);
+  }, [runFlashscoreAndCompare]);
+
+  // Called when screenshot data is ready
+  const injectScreenshotData = useCallback((matches: NikeMatch[], markets: NikeMarket[]) => {
+    setNikeMatches(matches);
+    setNikeMarkets(markets);
+    const twoWay = markets.filter(m => m.isTwoWay && m.marketType !== null);
+    setNikeTwoWayMarkets(twoWay);
+    setNikeSourceMethod('screenshot_ocr');
+    updateProgress('loading_nike', 'complete');
+    updateProgress('extracting_markets', 'complete');
+  }, []);
+
+  // Continue workflow after screenshot data injection
+  const continueAfterNike = useCallback(async () => {
+    if (nikeMatches.length === 0) return;
+    setNeedsScreenshotFallback(false);
+    const allErrors: string[] = [];
+    await runFlashscoreAndCompare(nikeMatches, nikeMarkets, nikeTwoWayMarkets, allErrors);
+  }, [nikeMatches, nikeMarkets, nikeTwoWayMarkets, runFlashscoreAndCompare]);
+
   const runStage = useCallback(async (_stage: WorkflowStage) => {
     await runAll();
   }, [runAll]);
@@ -141,6 +203,8 @@ export function useWorkflow(): WorkflowData {
     nikeMatches, nikeMarkets, nikeTwoWayMarkets,
     flashscoreMatches, flashscoreMarkets, comparisonRows,
     summary, stage, stageProgress, errors,
+    nikeAttempts, nikeSourceMethod, nikeFallbackReason, needsScreenshotFallback,
     runAll, runStage, reset, exportCSV: doExportCSV,
+    injectScreenshotData, continueAfterNike,
   };
 }
