@@ -101,7 +101,7 @@ export default function Dashboard() {
             <TabsTrigger value="nike-markets">Nike 2-Way Markets</TabsTrigger>
             <TabsTrigger value="fs-matches">FS Matched Events</TabsTrigger>
             <TabsTrigger value="fs-markets">FS Markets</TabsTrigger>
-            <TabsTrigger value="comparison">Final Comparison</TabsTrigger>
+            <TabsTrigger value="comparison">Nike vs Tipsport</TabsTrigger>
             <TabsTrigger value="summary">Summary</TabsTrigger>
           </TabsList>
 
