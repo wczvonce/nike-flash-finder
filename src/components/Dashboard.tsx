@@ -92,6 +92,20 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Error messages */}
+      {wf.errors.length > 0 && (
+        <div className="border-b border-destructive/30 bg-destructive/10 px-4 py-2">
+          <div className="mx-auto max-w-[1600px]">
+            {wf.errors.map((err, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs text-destructive">
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>{err}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main content */}
       <main className="mx-auto max-w-[1600px] p-4">
         <Tabs defaultValue="comparison" className="space-y-4">
