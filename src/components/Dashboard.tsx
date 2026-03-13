@@ -8,9 +8,11 @@ import { FlashscoreMatchesTable } from '@/components/FlashscoreMatchesTable';
 import { FlashscoreMarketsTable } from '@/components/FlashscoreMarketsTable';
 import { ComparisonTable } from '@/components/ComparisonTable';
 import { SummaryPanel } from '@/components/SummaryPanel';
+import { NikeScreenshotUpload } from '@/components/NikeScreenshotUpload';
+import { NikeSourceDebugPanel } from '@/components/NikeSourceDebugPanel';
 import {
   Play, RotateCcw, Download, Loader2, CheckCircle2, Circle, AlertCircle,
-  Zap
+  Zap, ArrowRight
 } from 'lucide-react';
 import type { StageStatus, WorkflowStage } from '@/types/models';
 
@@ -31,7 +33,7 @@ function StageIcon({ status }: { status: StageStatus }) {
 
 export default function Dashboard() {
   const wf = useWorkflow();
-  const isRunning = wf.stage !== 'idle' && wf.stage !== 'complete';
+  const isRunning = wf.stage !== 'idle' && wf.stage !== 'complete' && !wf.needsScreenshotFallback;
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,7 +45,7 @@ export default function Dashboard() {
             <h1 className="text-lg font-bold tracking-tight">
               Nike Superkurzy Comparator
             </h1>
-            <Badge variant="outline" className="text-[10px] font-mono">v2.0 LIVE</Badge>
+            <Badge variant="outline" className="text-[10px] font-mono">v2.1 LIVE + OCR</Badge>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -55,6 +57,17 @@ export default function Dashboard() {
               {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
               Run All
             </Button>
+            {wf.needsScreenshotFallback && wf.nikeMatches.length > 0 && (
+              <Button
+                onClick={wf.continueAfterNike}
+                size="sm"
+                className="gap-1.5"
+                variant="default"
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+                Continue Workflow
+              </Button>
+            )}
             <Button onClick={wf.exportCSV} variant="secondary" size="sm" className="gap-1.5" disabled={wf.comparisonRows.length === 0}>
               <Download className="h-3.5 w-3.5" />
               CSV
@@ -107,7 +120,26 @@ export default function Dashboard() {
       )}
 
       {/* Main content */}
-      <main className="mx-auto max-w-[1600px] p-4">
+      <main className="mx-auto max-w-[1600px] p-4 space-y-4">
+        {/* Nike Source Debug Panel */}
+        {wf.nikeAttempts.length > 0 && (
+          <NikeSourceDebugPanel
+            attempts={wf.nikeAttempts}
+            selectedSource={wf.nikeSourceMethod}
+            fallbackReason={wf.nikeFallbackReason}
+          />
+        )}
+
+        {/* Screenshot Fallback UI */}
+        {wf.needsScreenshotFallback && (
+          <NikeScreenshotUpload
+            onDataReady={(matches, markets) => {
+              wf.injectScreenshotData(matches, markets);
+            }}
+            onCancel={wf.reset}
+          />
+        )}
+
         <Tabs defaultValue="comparison" className="space-y-4">
           <TabsList className="bg-secondary">
             <TabsTrigger value="nike-matches">Nike Matches</TabsTrigger>
