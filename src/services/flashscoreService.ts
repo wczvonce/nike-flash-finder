@@ -111,6 +111,17 @@ export async function parseFlashscoreOdds(fsMatches: FlashscoreMatch[]): Promise
     for (const def of defs) {
       counter++;
       const norm = normalizeMarket(def.rawMarketName, def.selection, fsMatch.sport);
+      const bookmakerOdds = makeOdds(...def.odds);
+
+      // Debug: log parsed bookmaker cell for each market row
+      const tipsport = bookmakerOdds.find(o => o.bookmakerName === 'Tipsport');
+      console.log(`[FS-PARSE] match=${fsMatch.rawTitle} | market=${def.rawMarketName} | selection=${def.selection} | period=${norm.period} | Tipsport=${tipsport?.currentOdd ?? 'N/A'}`);
+
+      // Validation: ensure Tipsport odd is from correct bookmaker row
+      if (tipsport && tipsport.currentOdd !== null && tipsport.currentOdd !== def.odds[1]) {
+        console.error(`[FS-PARSE-ERROR] Tipsport odd mismatch: expected=${def.odds[1]} got=${tipsport.currentOdd} for ${fsMatch.rawTitle} ${def.rawMarketName} ${def.selection}`);
+      }
+
       markets.push({
         id: `fs-mkt-${counter}`,
         flashscoreMatchId: fsMatch.id,
@@ -120,8 +131,13 @@ export async function parseFlashscoreOdds(fsMatches: FlashscoreMatch[]): Promise
         line: norm.line,
         period: norm.period,
         side: norm.side,
-        bookmakerOdds: makeOdds(...def.odds),
-        rawPayload: { rawMarketName: def.rawMarketName, rawSelection: def.selection },
+        bookmakerOdds,
+        rawPayload: {
+          rawMarketName: def.rawMarketName,
+          rawSelection: def.selection,
+          parsedTipsportOdd: tipsport?.currentOdd ?? null,
+          sourceOddsArray: def.odds,
+        },
       });
     }
   }
