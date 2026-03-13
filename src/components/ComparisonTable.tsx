@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { ComparisonRow } from '@/types/models';
 import { DetailModal } from './DetailModal';
 import { ArrowUpDown } from 'lucide-react';
+import { TrendBadge } from './TrendBadge';
 
 type SortKey = 'rank' | 'probabilityEdge' | 'percentDiff' | 'absoluteDiff' | 'nikeCurrentOdd' | 'tipsportCurrent' | 'date' | 'sport' | 'marketType';
 type SortDir = 'asc' | 'desc';
@@ -93,7 +94,9 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
                   <th className="px-2 py-2">Match</th>
                   <th className="px-2 py-2">Market</th>
                   <th className="px-2 py-2 text-right">Nike</th>
+                  <th className="px-1 py-2 text-center" title="Nike Trend">N↕</th>
                   <th className="px-2 py-2 text-right">Tipsport</th>
+                  <th className="px-1 py-2 text-center" title="Tipsport Trend">T↕</th>
                   <th className="px-2 py-2 text-right">Diff</th>
                   <th className="px-2 py-2 text-right">%</th>
                   <th className="px-2 py-2 text-right" title="Probability Edge in percentage points">Prob Edge</th>
@@ -110,7 +113,9 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
                     <td className="px-2 py-1.5 text-xs max-w-[200px] truncate">{row.matchTitle}</td>
                     <td className="px-2 py-1.5 text-xs">{row.marketType} {row.line != null ? row.line : ''} {row.selection}</td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold text-accent">{row.nikeCurrentOdd.toFixed(2)}</td>
+                    <td className="px-1 py-1.5 text-center"><TrendBadge direction={row.nikeTrend} /></td>
                     <td className="px-2 py-1.5 text-right font-mono">{row.tipsportCurrent.toFixed(2)}</td>
+                    <td className="px-1 py-1.5 text-center"><TrendBadge direction={row.tipsportTrend} /></td>
                     <td className="px-2 py-1.5 text-right font-mono text-primary">+{row.absoluteDiff.toFixed(2)}</td>
                     <td className="px-2 py-1.5 text-right font-mono">+{row.percentDiff.toFixed(2)}%</td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold text-primary">{row.probabilityEdge.toFixed(2)}pp</td>
@@ -170,11 +175,11 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
               <th className="px-2 py-2">Time</th>
               <th className="px-2 py-2">Match</th>
               <SortHeader k="marketType">Market</SortHeader>
-              <th className="px-2 py-2">Line</th>
-              <th className="px-2 py-2">Period</th>
-              <th className="px-2 py-2">Selection</th>
+              <th className="px-2 py-2">Sel</th>
               <SortHeader k="nikeCurrentOdd"><span className="text-right w-full">Nike</span></SortHeader>
+              <th className="px-1 py-2 text-center" title="Nike Trend">N↕</th>
               <SortHeader k="tipsportCurrent"><span className="text-right w-full">Tipsport</span></SortHeader>
+              <th className="px-1 py-2 text-center" title="Tipsport Trend">T↕</th>
               <SortHeader k="absoluteDiff"><span className="text-right w-full">Diff</span></SortHeader>
               <SortHeader k="percentDiff"><span className="text-right w-full">%</span></SortHeader>
               <SortHeader k="probabilityEdge"><span className="text-right w-full" title="Probability Edge (pp)">Prob Edge</span></SortHeader>
@@ -193,11 +198,11 @@ export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
                 <td className="px-2 py-1.5 text-xs font-mono">{row.time}</td>
                 <td className="px-2 py-1.5 text-xs max-w-[180px] truncate">{row.matchTitle}</td>
                 <td className="px-2 py-1.5 text-xs">{row.marketType}</td>
-                <td className="px-2 py-1.5 text-xs font-mono">{row.line ?? '-'}</td>
-                <td className="px-2 py-1.5 text-xs">{row.period}</td>
                 <td className="px-2 py-1.5 text-xs">{row.selection}</td>
                 <td className="px-2 py-1.5 text-right font-mono font-bold text-accent">{row.nikeCurrentOdd.toFixed(2)}</td>
+                <td className="px-1 py-1.5 text-center"><TrendBadge direction={row.nikeTrend} /></td>
                 <td className="px-2 py-1.5 text-right font-mono">{row.tipsportCurrent.toFixed(2)}</td>
+                <td className="px-1 py-1.5 text-center"><TrendBadge direction={row.tipsportTrend} /></td>
                 <td className="px-2 py-1.5 text-right font-mono text-primary">+{row.absoluteDiff.toFixed(2)}</td>
                 <td className="px-2 py-1.5 text-right font-mono">+{row.percentDiff.toFixed(2)}%</td>
                 <td className="px-2 py-1.5 text-right font-mono font-bold text-primary">{row.probabilityEdge.toFixed(2)}pp</td>

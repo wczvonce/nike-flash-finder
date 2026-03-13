@@ -26,6 +26,14 @@ export function SummaryPanel({ stats }: { stats: SummaryStats | null }) {
         <StatCard label="Top Market Type" value={stats.topMarketType} />
       </div>
 
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard label="Nike ↑ (up)" value={stats.nikeUpCount} />
+        <StatCard label="Nike ↓ (down)" value={stats.nikeDownCount} />
+        <StatCard label="Tipsport ↑ (up)" value={stats.tipsportUpCount} />
+        <StatCard label="Tipsport ↓ (down)" value={stats.tipsportDownCount} />
+        <StatCard label="Favorable Trends" value={stats.favorableTrendCount} highlight />
+      </div>
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <GroupedSummary title="By Sport" data={stats.bySport} />
         <GroupedSummary title="By Market Type" data={stats.byMarketType} />

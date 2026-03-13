@@ -47,6 +47,11 @@ export function computeSummary(rows: ComparisonRow[]): SummaryStats {
     topMarketType,
     bySport,
     byMarketType,
+    nikeUpCount: rows.filter(r => r.nikeTrend === 'up').length,
+    nikeDownCount: rows.filter(r => r.nikeTrend === 'down').length,
+    tipsportUpCount: rows.filter(r => r.tipsportTrend === 'up').length,
+    tipsportDownCount: rows.filter(r => r.tipsportTrend === 'down').length,
+    favorableTrendCount: rows.filter(r => r.trendAlignment === 'very favorable' || r.trendAlignment === 'favorable').length,
   };
 }
 
