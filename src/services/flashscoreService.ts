@@ -24,18 +24,20 @@ const FS_MATCHES: MockFSMatchData[] = [
   { nikeMirrorId: 'nike-5', sport: 'tennis', date: '2026-03-14', time: '02:00', homeTeam: 'Rybakina E.', awayTeam: 'Svitolina E.', url: 'https://flashscore.com/match/rybakina-svitolina' },
 ];
 
-function makeOdds(fortuna: number | null, tipsport: number | null, doxxbet: number | null, tipos: number | null): BookmakerOdds[] {
-  const make = (name: 'Fortuna' | 'Tipsport' | 'DOXXbet' | 'Tipos', cur: number | null): BookmakerOdds => {
-    const trends: TrendDirection[] = ['up', 'down', 'unchanged'];
-    return {
-      bookmakerName: name,
-      currentOdd: cur,
-      openingOdd: cur ? +(cur + (Math.random() * 0.3 - 0.15)).toFixed(2) : null,
-      trendDirection: cur ? trends[Math.floor(Math.random() * 3)] : null,
-      available: cur !== null,
-    };
-  };
-  return [make('Fortuna', fortuna), make('Tipsport', tipsport), make('DOXXbet', doxxbet), make('Tipos', tipos)];
+function makeOdds(
+  fortuna: number | null, tipsport: number | null, doxxbet: number | null, tipos: number | null,
+  openings?: [number | null, number | null, number | null, number | null],
+  trends?: [TrendDirection, TrendDirection, TrendDirection, TrendDirection]
+): BookmakerOdds[] {
+  const names: Array<'Fortuna' | 'Tipsport' | 'DOXXbet' | 'Tipos'> = ['Fortuna', 'Tipsport', 'DOXXbet', 'Tipos'];
+  const odds = [fortuna, tipsport, doxxbet, tipos];
+  return names.map((name, i) => ({
+    bookmakerName: name,
+    currentOdd: odds[i],
+    openingOdd: openings?.[i] ?? null,
+    trendDirection: trends?.[i] ?? (odds[i] !== null ? 'unknown' as TrendDirection : null),
+    available: odds[i] !== null,
+  }));
 }
 
 interface MockFSMarketDef {
@@ -45,18 +47,19 @@ interface MockFSMarketDef {
   odds: [number | null, number | null, number | null, number | null]; // F, T, D, Ti
 }
 
-// Tipsport odds set so Nike is sometimes higher for meaningful comparison
+// Flashscore odds — must match real Flashscore Dvojita sanca / Zakladny cas values
+// Columns: 1X, 12, X2 — we only store 1X and X2 (2-way markets matched from Nike)
 const FS_MARKETS: MockFSMarketDef[] = [
-  // M gladbach vs St. Pauli — Double Chance
-  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: '1X', odds: [1.22, 1.20, 1.23, 1.21] },
-  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.88, 1.85, 1.90, 1.87] },
-  // Chelsea vs Newcastle — Double Chance
+  // M gladbach vs St. Pauli — Dvojita sanca / Zakladny cas: 1X=1.24, 12=1.36, X2=1.93
+  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: '1X', odds: [1.22, 1.24, 1.23, 1.21] },
+  { nikeMirrorId: 'nike-1', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.90, 1.93, 1.92, 1.89] },
+  // Chelsea vs Newcastle — Dvojita sanca / Zakladny cas
   { nikeMirrorId: 'nike-2', rawMarketName: 'Double Chance', selection: '1X', odds: [1.25, 1.22, 1.26, 1.24] },
   { nikeMirrorId: 'nike-2', rawMarketName: 'Double Chance', selection: 'X2', odds: [2.00, 1.95, 2.02, 1.98] },
-  // Kladno vs HC Sparta Praha — Double Chance
+  // Kladno vs HC Sparta Praha — Dvojita sanca
   { nikeMirrorId: 'nike-3', rawMarketName: 'Double Chance', selection: '1X', odds: [1.68, 1.65, 1.70, 1.67] },
   { nikeMirrorId: 'nike-3', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.38, 1.40, 1.36, 1.39] },
-  // Michalovce vs Spišská N. Ves — Double Chance
+  // Michalovce vs Spišská N. Ves — Dvojita sanca
   { nikeMirrorId: 'nike-4', rawMarketName: 'Double Chance', selection: '1X', odds: [1.40, 1.38, 1.42, 1.39] },
   { nikeMirrorId: 'nike-4', rawMarketName: 'Double Chance', selection: 'X2', odds: [1.55, 1.52, 1.57, 1.54] },
   // Rybakina vs Svitolina — Winner
@@ -108,6 +111,17 @@ export async function parseFlashscoreOdds(fsMatches: FlashscoreMatch[]): Promise
     for (const def of defs) {
       counter++;
       const norm = normalizeMarket(def.rawMarketName, def.selection, fsMatch.sport);
+      const bookmakerOdds = makeOdds(...def.odds);
+
+      // Debug: log parsed bookmaker cell for each market row
+      const tipsport = bookmakerOdds.find(o => o.bookmakerName === 'Tipsport');
+      console.log(`[FS-PARSE] match=${fsMatch.rawTitle} | market=${def.rawMarketName} | selection=${def.selection} | period=${norm.period} | Tipsport=${tipsport?.currentOdd ?? 'N/A'}`);
+
+      // Validation: ensure Tipsport odd is from correct bookmaker row
+      if (tipsport && tipsport.currentOdd !== null && tipsport.currentOdd !== def.odds[1]) {
+        console.error(`[FS-PARSE-ERROR] Tipsport odd mismatch: expected=${def.odds[1]} got=${tipsport.currentOdd} for ${fsMatch.rawTitle} ${def.rawMarketName} ${def.selection}`);
+      }
+
       markets.push({
         id: `fs-mkt-${counter}`,
         flashscoreMatchId: fsMatch.id,
@@ -117,8 +131,13 @@ export async function parseFlashscoreOdds(fsMatches: FlashscoreMatch[]): Promise
         line: norm.line,
         period: norm.period,
         side: norm.side,
-        bookmakerOdds: makeOdds(...def.odds),
-        rawPayload: { rawMarketName: def.rawMarketName, rawSelection: def.selection },
+        bookmakerOdds,
+        rawPayload: {
+          rawMarketName: def.rawMarketName,
+          rawSelection: def.selection,
+          parsedTipsportOdd: tipsport?.currentOdd ?? null,
+          sourceOddsArray: def.odds,
+        },
       });
     }
   }
