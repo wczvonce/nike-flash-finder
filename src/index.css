@@ -43,6 +43,10 @@
     --row-unmatched: 0 30% 12%;
     --row-incomplete: 220 15% 12%;
 
+    --edge-strong: 142 50% 12%;
+    --edge-solid: 142 40% 15%;
+    --edge-small: 45 40% 12%;
+
     --trend-up: 142 60% 50%;
     --trend-down: 0 70% 55%;
     --trend-unchanged: 215 15% 50%;
@@ -88,6 +92,15 @@
   }
   .row-incomplete {
     background-color: hsl(var(--row-incomplete));
+  }
+  .edge-strong {
+    background-color: hsl(var(--edge-strong));
+  }
+  .edge-solid {
+    background-color: hsl(var(--edge-solid));
+  }
+  .edge-small {
+    background-color: hsl(var(--edge-small));
   }
   .trend-up {
     color: hsl(var(--trend-up));

@@ -82,9 +82,10 @@ export interface FlashscoreMarket {
   rawPayload: Record<string, unknown>;
 }
 
-// ===== COMPARISON =====
+// ===== COMPARISON (Nike vs Tipsport only) =====
 export interface ComparisonRow {
   id: string;
+  rank: number;
   sport: Sport;
   date: string;
   time: string;
@@ -99,20 +100,12 @@ export interface ComparisonRow {
   nikeMarketName: string;
   nikeSelectionName: string;
   nikeCurrentOdd: number;
-  fortunaCurrent: number | null;
-  fortunaOpening: number | null;
-  fortunaTrend: TrendDirection;
-  tipsportCurrent: number | null;
+  tipsportCurrent: number;
   tipsportOpening: number | null;
   tipsportTrend: TrendDirection;
-  doxxbetCurrent: number | null;
-  doxxbetOpening: number | null;
-  doxxbetTrend: TrendDirection;
-  tiposCurrent: number | null;
-  tiposOpening: number | null;
-  tiposTrend: TrendDirection;
-  nikeHigherThan: string[];
-  nikeIsBestOverall: boolean;
+  tipsportRawMarketName: string;
+  absoluteDiff: number;
+  percentDiff: number;
   matchingConfidence: number;
   status: ComparisonStatus;
   notes: string;
@@ -148,11 +141,16 @@ export interface SummaryStats {
   totalNikeMarkets: number;
   totalTwoWayMarkets: number;
   totalFlashscoreMatched: number;
-  totalFlashscoreMarketsMatched: number;
-  totalComparisonRows: number;
-  totalNikeHigher: number;
-  totalNikeBestOverall: number;
+  totalValidCompared: number;
+  totalNikeBetter: number;
+  avgAdvantagePercent: number;
+  medianAdvantagePercent: number;
+  maxAdvantagePercent: number;
+  minAdvantagePercent: number;
+  avgAbsoluteDiff: number;
+  maxAbsoluteDiff: number;
+  topSport: string;
+  topMarketType: string;
   bySport: Record<string, number>;
   byMarketType: Record<string, number>;
-  byBookmakerBeaten: Record<string, number>;
 }

@@ -6,31 +6,37 @@ export function SummaryPanel({ stats }: { stats: SummaryStats | null }) {
 
   return (
     <div className="space-y-6">
+      <h3 className="text-sm font-bold text-primary tracking-wide uppercase">Nike vs Tipsport Summary</h3>
+
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Nike Matches" value={stats.totalNikeMatches} />
-        <StatCard label="Nike Markets" value={stats.totalNikeMarkets} />
-        <StatCard label="2-Way Markets" value={stats.totalTwoWayMarkets} />
+        <StatCard label="Nike 2-Way Markets" value={stats.totalTwoWayMarkets} />
         <StatCard label="FS Matched" value={stats.totalFlashscoreMatched} />
-        <StatCard label="FS Markets Matched" value={stats.totalFlashscoreMarketsMatched} />
-        <StatCard label="Comparison Rows" value={stats.totalComparisonRows} />
-        <StatCard label="Nike Higher" value={stats.totalNikeHigher} highlight />
-        <StatCard label="Nike Best Overall" value={stats.totalNikeBestOverall} highlight />
+        <StatCard label="Valid Compared" value={stats.totalValidCompared} />
+        <StatCard label="Nike Better (rows)" value={stats.totalNikeBetter} highlight />
+        <StatCard label="Avg Advantage %" value={`${stats.avgAdvantagePercent}%`} highlight />
+        <StatCard label="Median Advantage %" value={`${stats.medianAdvantagePercent}%`} />
+        <StatCard label="Max Advantage %" value={`${stats.maxAdvantagePercent}%`} highlight />
+        <StatCard label="Min Advantage %" value={`${stats.minAdvantagePercent}%`} />
+        <StatCard label="Avg Abs Diff" value={stats.avgAbsoluteDiff.toFixed(2)} />
+        <StatCard label="Max Abs Diff" value={stats.maxAbsoluteDiff.toFixed(2)} highlight />
+        <StatCard label="Top Sport" value={stats.topSport} />
+        <StatCard label="Top Market Type" value={stats.topMarketType} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <GroupedSummary title="By Sport" data={stats.bySport} />
         <GroupedSummary title="By Market Type" data={stats.byMarketType} />
-        <GroupedSummary title="Bookmaker Beaten Most" data={stats.byBookmakerBeaten} />
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function StatCard({ label, value, highlight }: { label: string; value: number | string; highlight?: boolean }) {
   return (
-    <div className={`rounded border border-border p-3 ${highlight ? 'row-best' : 'bg-card'}`}>
+    <div className={`rounded border border-border p-3 ${highlight ? 'edge-strong' : 'bg-card'}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-2xl font-mono font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
+      <p className={`text-xl font-mono font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
   );
 }

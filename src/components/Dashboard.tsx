@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useWorkflow } from '@/hooks/useWorkflow';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,7 +31,6 @@ function StageIcon({ status }: { status: StageStatus }) {
 
 export default function Dashboard() {
   const wf = useWorkflow();
-  const [showOnlyHigher, setShowOnlyHigher] = useState(true);
   const isRunning = wf.stage !== 'idle' && wf.stage !== 'complete';
 
   return (
@@ -87,12 +85,8 @@ export default function Dashboard() {
             <span className="text-muted-foreground">Matches: <span className="text-foreground">{wf.nikeMatches.length}</span></span>
             <span className="text-muted-foreground">2-Way: <span className="text-foreground">{wf.nikeTwoWayMarkets.length}</span></span>
             <span className="text-muted-foreground">FS: <span className="text-foreground">{wf.flashscoreMatches.length}</span></span>
-            <span className="text-muted-foreground">Rows: <span className="text-foreground">{wf.comparisonRows.length}</span></span>
-            <span className="text-primary font-semibold">
-              Higher: {wf.comparisonRows.filter(r => r.nikeHigherThan.length > 0).length}
-            </span>
             <span className="text-primary font-bold">
-              Best: {wf.comparisonRows.filter(r => r.nikeIsBestOverall).length}
+              Nike &gt; Tipsport: {wf.comparisonRows.length}
             </span>
           </div>
         </div>
@@ -106,7 +100,7 @@ export default function Dashboard() {
             <TabsTrigger value="nike-markets">Nike 2-Way Markets</TabsTrigger>
             <TabsTrigger value="fs-matches">FS Matched Events</TabsTrigger>
             <TabsTrigger value="fs-markets">FS Markets</TabsTrigger>
-            <TabsTrigger value="comparison">Final Comparison</TabsTrigger>
+            <TabsTrigger value="comparison">Nike vs Tipsport</TabsTrigger>
             <TabsTrigger value="summary">Summary</TabsTrigger>
           </TabsList>
 
@@ -127,18 +121,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="comparison">
-            <div className="mb-3 flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={showOnlyHigher}
-                  onChange={e => setShowOnlyHigher(e.target.checked)}
-                  className="rounded border-border"
-                />
-                Show only Nike-higher rows
-              </label>
-            </div>
-            <ComparisonTable rows={wf.comparisonRows} showOnlyNikeHigher={showOnlyHigher} />
+            <ComparisonTable rows={wf.comparisonRows} />
           </TabsContent>
 
           <TabsContent value="summary">
