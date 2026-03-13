@@ -2,6 +2,7 @@ import type { ComparisonRow } from '@/types/models';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { TrendIcon } from './OddCell';
+import { TrendBadge, TrendAlignmentBadge } from './TrendBadge';
 
 export function DetailModal({ row, open, onClose }: {
   row: ComparisonRow | null;
