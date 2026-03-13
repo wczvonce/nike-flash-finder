@@ -43,7 +43,7 @@ export default function Dashboard() {
             <h1 className="text-lg font-bold tracking-tight">
               Nike Superkurzy Comparator
             </h1>
-            <Badge variant="outline" className="text-[10px] font-mono">v1.0 MOCK</Badge>
+            <Badge variant="outline" className="text-[10px] font-mono">v2.0 LIVE</Badge>
           </div>
           <div className="flex items-center gap-2">
             <Button
